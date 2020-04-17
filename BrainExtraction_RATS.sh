@@ -1,29 +1,39 @@
 #!/bin/bash
 
+
+
+start=`date +%s`
+
+
+
 # Define parameters
 folder_working="/home/enzo/Desktop/BrainExtraction"
-folder_data="/home/enzo/Desktop/Data/Mouse/Processed" # Could be input
+#~ folder_data="/home/enzo/Desktop/Data/Mouse/Processed" # Could be input
+folder_data=${1} # Could be input
 folder_RATS="${folder_working}/rats/distribution"
 folder_slicer="/usr/local/slicer"
 
 for image_dir in $(find $folder_data/* -prune -type d); do
 	echo "Working on ${image_dir}"
 	
-	image="${image_dir}/${image_dir##*/}.nii"
-	image_name="${image%.*}"
-	image_nrrd="${image_name}.nrrd"
+	image="${image_dir}/${image_dir##*/}.nii.gz"
+	image_name="${image%%.*}"
+	#~ image_nrrd="${image_name}.nrrd"
 	t=(500) # Intensity threshold [500]
 	v=(380) # Volume threshold [380]
 	k=(6) # Diameter of structuring element size K1 [6]
 	a=(0) # Weight factor between the two cost terms [0]
 	n=(2000) # Number of vertices which describe the surface [2000]
 
-	#~ # Convert .nii input to .nrrd with custom slicer python script if nrrd file does not already exists
+	# Multiply image by 208500 which is approximately the multiplication factor between Bru2Nii output and previous imagej plugin output
+	fslmaths $image -mul 208500 $image
+
+	#~ # Convert .nii.gz input to .nrrd with custom slicer python script if nrrd file does not already exists
 	#~ if test -f "$image_nrrd"; then
-		#~ echo "nrrd already exists, no need to convert nii"
+		#~ echo "nrrd already exists, no need to convert nii.gz"
 	#~ else
-		#~ echo "convert nii to nrrd"
-		#~ python /home/enzo/Desktop/mri_convert_itk.py $image $image_nrrd
+		#~ echo "convert nii.gz to nrrd"
+		#~ python Desktop/mep-scripts/mri_convert_itk.py $image $image_nrrd
 	#~ fi
 
 	echo "enter parameter for loop"
@@ -34,9 +44,9 @@ for image_dir in $(find $folder_data/* -prune -type d); do
 		echo "a=${a[i]}"
 		echo "n=${n[i]}"
 
-		image_mask="${image_name}_mask_t=${t[i]}_v=${v[i]}_k=${k[i]}.nii" # (rat_t1_mm.nii.gz) Pre-segmentation image
+		image_mask="${image_name}_mask_t=${t[i]}_v=${v[i]}_k=${k[i]}.nii.gz" # (rat_t1_mm.nii.gz) Pre-segmentation image
 		image_vtp="${image_name}_vtp_t=${t[i]}_v=${v[i]}_k=${k[i]}_a=${a[i]}_n=${n[i]}.vtp" # (rat_t1_logismos.vtp) Output mesh (.vtp)
-		image_vtp_mask="${image_name}_vtp_mask_t=${t[i]}_v=${v[i]}_k=${k[i]}_a=${a[i]}_n=${n[i]}.nii" # Final mask
+		image_vtp_mask="${image_name}_vtp_mask_t=${t[i]}_v=${v[i]}_k=${k[i]}_a=${a[i]}_n=${n[i]}.nii.gz" # Final mask
 		
 		# RATS_MM
 		if test -f "$image_mask"; then
@@ -73,3 +83,9 @@ for image_dir in $(find $folder_data/* -prune -type d); do
 	done
 	
 done
+
+
+
+end=`date +%s`
+runtime=$((end-start))
+echo $runtime

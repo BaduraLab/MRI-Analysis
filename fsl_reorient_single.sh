@@ -1,0 +1,1 @@
+imagename="/home/enzo/Desktop/allen/annotation.nii" ; fsleyes $imagename ; fslorient -deleteorient $imagename ; fslswapdim $imagename RL AP SI $imagename ; fslorient -setqformcode 1 $imagename ; fsleyes $imagename ;
