@@ -24,6 +24,7 @@ both(){ ( echo "${@:2}" && "${@:2}" ) | tee "$1" ;}
 ## Define folder and file paths
 #~ subject_name="WT_50"
 subject_name=${1}
+
 folder_working="/home/enzo/Desktop/Data/Mouse/Processed_New/${subject_name}" # Alternatively define this by current working directory
 folder_FLIRT="${folder_working}/FLIRT"
 mkdir -p $folder_FLIRT
@@ -33,11 +34,11 @@ cp /home/enzo/Desktop/mep-scripts/FLIRT_single.sh $folder_FLIRT/
 FLIRT_log="${folder_FLIRT}/FLIRT_log"
 
 # Folders of reference
-folder_atlas_reference="${FSLDIR}/data/standard/allen/"
-folder_atlas_annotated="${FSLDIR}/data/atlases/AMBMC/"
-folder_atlas_xml="${FSLDIR}/data/atlases/"
-folder_atlas_LUT="${FSLDIR}/etc/luts/"
-folder_atlas_config="${FSLDIR}/etc/flirtsch/"
+folder_atlas_reference="${FSLDIR}/data/standard/allen_new"
+folder_atlas_annotated="${FSLDIR}/data/atlases/AMBMC"
+folder_atlas_xml="${FSLDIR}/data/atlases"
+folder_atlas_LUT="${FSLDIR}/etc/luts"
+folder_atlas_config="${FSLDIR}/etc/flirtsch"
 
 # Define image path and reorient, use reoriented image as image
 image="${folder_working}/${subject_name}.nii" # input?
@@ -130,6 +131,7 @@ flirt 	-in $image_allen_annotation \
 		-out $image_allen_annotation_invflirted \
 		-init $image_warpaffine_inverted \
 		-applyxfm \
+		-interp nearestneighbour \
 		-verbose 1
 		
 		

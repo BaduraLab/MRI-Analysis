@@ -222,7 +222,7 @@ flirt 	-in $image_allen_annotation \
 # Invert FNIRT (reference2native)
 echo
 echo "Invert FNIRT"
-invwarp --ref=$image_flirted \
+invwarp --ref=$image \
 		--warp=$image_warpcoef \
 		--out=$image_warpcoef_inverted \
 		--verbose
