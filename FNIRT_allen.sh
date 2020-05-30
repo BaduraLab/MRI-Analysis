@@ -1,20 +1,21 @@
 # Define paths
+reference_resolution=50
 atlas_folder=/usr/local/fsl/data/standard
-allen_annotation=${atlas_folder}/allen_new/annotation_25_reoriented.nii.gz #
-allen_average_template=${atlas_folder}/allen_new/average_template_25_reoriented.nii.gz #
+allen_annotation=${atlas_folder}/allen_new/annotation_${reference_resolution}_reoriented.nii.gz #
+allen_average_template=${atlas_folder}/allen_new/average_template_${reference_resolution}_reoriented.nii.gz #
 AMBMC_average_template=${atlas_folder}/AMBMC_model_reoriented.nii.gz #
 
-allen_to_AMBMC_flirt=${atlas_folder}/allen_new/average_template_25_to_AMBMC_flirt.mat
-allen_average_template_to_AMBMC_flirted=${atlas_folder}/allen_new/average_template_25_to_AMBMC_flirted.nii.gz
+allen_to_AMBMC_flirt=${atlas_folder}/allen_new/average_template_${reference_resolution}_to_AMBMC_flirt.mat
+allen_average_template_to_AMBMC_flirted=${atlas_folder}/allen_new/average_template_${reference_resolution}_to_AMBMC_flirted.nii.gz
 
-allen_annotation_to_AMBMC_flirted=${atlas_folder}/allen_new/annotation_25_to_AMBMC_flirted.nii.gz
+allen_annotation_to_AMBMC_flirted=${atlas_folder}/allen_new/annotation_${reference_resolution}_to_AMBMC_flirted.nii.gz
 
-allen_to_AMBMC_fnirt=${atlas_folder}/allen_new/average_template_25_to_AMBMC_fnirt.nii.gz
-allen_average_template_to_AMBMC_fnirted=${atlas_folder}/allen_new/average_template_25_to_AMBMC_fnirted.nii.gz
-allen_annotation_to_AMBMC_fnirted=${atlas_folder}/allen_new/annotation_25_to_AMBMC_fnirted.nii.gz
+allen_to_AMBMC_fnirt=${atlas_folder}/allen_new/average_template_${reference_resolution}_to_AMBMC_fnirt.nii.gz
+allen_average_template_to_AMBMC_fnirted=${atlas_folder}/allen_new/average_template_${reference_resolution}_to_AMBMC_fnirted.nii.gz
+allen_annotation_to_AMBMC_fnirted=${atlas_folder}/allen_new/annotation_${reference_resolution}_to_AMBMC_fnirted.nii.gz
 
-allen_annotation_bin=${atlas_folder}/allen_new/annotation_25_bin.nii.gz
-allen_annotation_bin_to_AMBMC_flirted=${atlas_folder}/allen_new/annotation_25_bin_to_AMBMC_flirted.nii.gz
+allen_annotation_bin=${atlas_folder}/allen_new/annotation_${reference_resolution}_bin.nii.gz
+allen_annotation_bin_to_AMBMC_flirted=${atlas_folder}/allen_new/annotation_${reference_resolution}_bin_to_AMBMC_flirted.nii.gz
 
 
 
@@ -113,3 +114,7 @@ fslmaths $allen_annotation_to_AMBMC_flirted -thr 0.5 -bin $allen_annotation_bin_
 		#~ -applyxfm \
 		#~ -verbose 1 \
 		#~ -interp sinc
+		
+		
+#~ fslreorient2std Desktop/allen/annotation_50_remapped.nii.gz /usr/local/fsl/data/standard/allen_new/annotation_50_reoriented.nii.gz 
+#~ fslreorient2std Desktop/allen/average_template_50.nii.gz /usr/local/fsl/data/standard/allen_new/average_template_50_reoriented.nii.gz

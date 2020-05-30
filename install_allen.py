@@ -19,7 +19,7 @@ Manifest.safe_mkdir(allen_dir)
 
 # this is a string which contains the name of the latest ccf version
 allen_version = ReferenceSpaceApi.CCF_VERSION_DEFAULT
-allen_resolution = 25 # Set resolution in micrometers
+allen_resolution = 50 # Set resolution in micrometers
 
 
 
@@ -34,7 +34,7 @@ allen_annotation_remapped_path = os.path.join(allen_dir, 'annotation_'+str(allen
 allen_average_template_path=os.path.join(allen_dir, 'average_template_'+str(allen_resolution)+'.nii.gz')
 
 # Save nifti
-qform = np.array([[0, 0, 0.025, 0], [-0.025, 0, 0, 0], [0, -0.025, 0, 0], [0, 0, 0, 1]])
+qform = np.array([[0, 0, allen_resolution*pow(10, -3), 0], [-allen_resolution*pow(10, -3), 0, 0, 0], [0, -allen_resolution*pow(10, -3), 0, 0], [0, 0, 0, 1]])
 img_annotation = nib.Nifti1Image(annot, np.eye(4))
 img_average_template = nib.Nifti1Image(template, np.eye(4))
 img_annotation.set_qform(qform, code=1)
@@ -62,25 +62,34 @@ allen_structure_graph_tree.get_structures_by_name(['Dorsal auditory area'])
 
 # Look at children or parent of structure, important for later (volume calculations)
 
-# Save structure graph as json
-allen_average_template_json_path=os.path.join(allen_dir, 'structure_graph.json')
-with open(allen_average_template_json_path, 'w') as output_json:
-    json.dump(allen_structure_graph_dict, output_json)
-# Also save structure graph as csv
+# Define path of structure graph table
 allen_average_template_csv_path=os.path.join(allen_dir, 'structure_graph.csv')
-allen_structure_graph_df = pd.DataFrame(allen_structure_graph_dict)
-allen_structure_graph_df.to_csv(allen_average_template_csv_path)
-
 allen_average_template_csv_remapped_path = os.path.join(allen_dir, 'structure_graph_remapped.csv')
-allen_structure_graph_remapped_df = allen_structure_graph_df.copy()
-allen_structure_graph_remapped_df['id_custom'] = np.random.permutation(len(allen_structure_graph_df))+1
-structure_id_path_custom = list()
-for iRow in range(len(allen_structure_graph_df)):
-    structure_id_path_custom.append(list(npi.remap(allen_structure_graph_remapped_df.loc[iRow, 'structure_id_path'],
-                                              list(allen_structure_graph_remapped_df['id']),
-                                              list(allen_structure_graph_remapped_df['id_custom']))))
-allen_structure_graph_remapped_df['structure_id_path_custom'] = structure_id_path_custom
-allen_structure_graph_remapped_df.to_csv(allen_average_template_csv_remapped_path)
+
+# If structure graph already created, simply load old table
+if os.path.exists(allen_average_template_csv_remapped_path):
+    allen_structure_graph_df = pd.read_csv(allen_average_template_csv_path)
+    allen_structure_graph_remapped_df = pd.read_csv(allen_average_template_csv_remapped_path)
+
+# Else create new structure graph
+else:
+    # Save structure graph as json
+    allen_average_template_json_path=os.path.join(allen_dir, 'structure_graph.json')
+    with open(allen_average_template_json_path, 'w') as output_json:
+        json.dump(allen_structure_graph_dict, output_json)
+    # Also save structure graph as csv
+    allen_structure_graph_df = pd.DataFrame(allen_structure_graph_dict)
+    allen_structure_graph_df.to_csv(allen_average_template_csv_path)
+
+    allen_structure_graph_remapped_df = allen_structure_graph_df.copy()
+    allen_structure_graph_remapped_df['id_custom'] = np.random.permutation(len(allen_structure_graph_df))+1
+    structure_id_path_custom = list()
+    for iRow in range(len(allen_structure_graph_df)):
+        structure_id_path_custom.append(list(npi.remap(allen_structure_graph_remapped_df.loc[iRow, 'structure_id_path'],
+                                                  list(allen_structure_graph_remapped_df['id']),
+                                                  list(allen_structure_graph_remapped_df['id_custom']))))
+    allen_structure_graph_remapped_df['structure_id_path_custom'] = structure_id_path_custom
+    allen_structure_graph_remapped_df.to_csv(allen_average_template_csv_remapped_path)
 
 
 

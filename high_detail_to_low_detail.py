@@ -20,7 +20,7 @@ import glob
 # Define paths
 allen_fsl_dir = '/usr/local/fsl/data/standard/allen_new'
 data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
-invwarped_list = glob.glob(data_path+'/*/FLIRT/*invwarped*')
+invwarped_list = glob.glob(data_path+'/*/FLIRT/*invwarped.nii.gz')
 # allen_annotation_path = os.path.join(allen_fsl_dir, 'annotation_25_to_AMBMC_flirted.nii.gz')
 allen_structure_table_path = os.path.join(allen_fsl_dir, 'structure_graph_remapped.csv')
 allen_structure_table_path_lowdetail = os.path.join(allen_fsl_dir, 'structure_graph_remapped_lowdetail.csv')
@@ -34,14 +34,20 @@ for iInv in range(len(invwarped_list)):
     invwarped = invwarped_image.get_fdata()
     structure_graph = pd.read_csv(allen_structure_table_path)
 
-    structure_id_low_detail = list();
+    structure_id_low_detail = list()
     for iRow in range(len(structure_graph)):
         structure_graph_path = list(map(int, structure_graph.loc[iRow, 'structure_id_path_custom'].strip('][').split(', ')))
         structure_graph_path_len = len(structure_graph_path)
-        if structure_graph_path_len>3:
-            structure_id_low_detail.append(structure_graph_path[2])
+
+        # structure is already low detail (level 3 or lower), remap integer to itself (no change in annotation)
+        if structure_graph_path_len < 3:
+            structure_id_low_detail.append(structure_graph_path[-1])
+        # structure has parent with lower detail, remap integer to lower detail annotation volume
         else:
-            structure_id_low_detail.append(structure_graph_path_len)
+            if structure_graph_path[2]==90:
+                structure_id_low_detail.append(structure_graph_path[-1])
+            else:
+                structure_id_low_detail.append(structure_graph_path[2])
 
     structure_graph['id_low_detail'] = structure_id_low_detail
     structure_graph.to_csv(allen_structure_table_path_lowdetail)
