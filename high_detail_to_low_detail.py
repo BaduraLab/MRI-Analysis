@@ -20,7 +20,7 @@ import glob
 # Define paths
 allen_fsl_dir = '/usr/local/fsl/data/standard/allen_new'
 data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
-invwarped_list = glob.glob(data_path+'/*/FLIRT/*invwarped.nii.gz')
+invwarped_list = list(set(glob.glob(data_path+'/*/*invsynned*.nii.gz')) - set(glob.glob(data_path+'/*/*invsynned*flirted.nii.gz')) - set(glob.glob(data_path+'/*/*invsynned*lowdetail.nii.gz')))
 # allen_annotation_path = os.path.join(allen_fsl_dir, 'annotation_25_to_AMBMC_flirted.nii.gz')
 allen_structure_table_path = os.path.join(allen_fsl_dir, 'structure_graph_remapped.csv')
 allen_structure_table_path_lowdetail = os.path.join(allen_fsl_dir, 'structure_graph_remapped_lowdetail.csv')

@@ -4,6 +4,7 @@ import os, itk
 import json
 import pandas as pd
 from allensdk.api.queries.reference_space_api import ReferenceSpaceApi
+from allensdk.api.queries.image_download_api import ImageDownloadApi
 from allensdk.api.queries.ontologies_api import OntologiesApi
 from allensdk.core.structure_tree import StructureTree
 from allensdk.config.manifest import Manifest
@@ -162,6 +163,7 @@ nib.save(img_annotation, allen_annotation_remapped_path)
 
 #
 # # Download data
+# image_api = ImageDownloadApi()
 # rsapi = ReferenceSpaceApi()
 # # allen_template_path = os.path.join(allen_dir, 'template_'+str(allen_resolution)+'.nrrd')
 # # rsapi.download_template_volume(resolution=allen_resolution,

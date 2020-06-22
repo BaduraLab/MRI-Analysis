@@ -22,16 +22,16 @@ reference_path = '/usr/local/fsl/data/standard/allen_new'
 reference_image_path = os.path.join(reference_path, 'average_template_'+str(allen_resolution)+'_to_AMBMC_flirted.nii.gz')
 annotation_image_path = os.path.join(reference_path, 'annotation_'+str(allen_resolution)+'_to_AMBMC_flirted.nii.gz')
 
-input_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
-subjects = glob.glob(input_path+'/*/')
+data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
+subjects = glob.glob(data_path+'/*/')
 subjects = [s.split('/')[-2] for s in subjects]
-subjects = subjects[1::] # remove WT_50, which was already synned with a resolution of 25 micrometers
+subjects = subjects[2::] # remove WT_50, which was already synned with a resolution of 25 micrometers
 
 for iSubject in range(len(subjects)):
 
     # Define per suject
     subject = subjects[iSubject]
-    input_path = os.path.join(input_path, subject)
+    input_path = os.path.join(data_path, subject)
     FLIRT_folder_path = os.path.join(input_path, 'FLIRT')
     mask_path = glob.glob(FLIRT_folder_path + '/*_bin.mask.nii.gz')[0]
     FLIRT_path = glob.glob(FLIRT_folder_path + '/*warpaffine.mat')[0]
@@ -84,56 +84,54 @@ for iSubject in range(len(subjects)):
 
 
 
-    # evaluate warps
-    X, Y, Z = np.mgrid[0:input.shape[0]:1, 650:651:1, 0:input.shape[2]:1]
-
-    fig1 = go.Figure(data=go.Volume(
-        x=X.flatten(),
-        y=Y.flatten(),
-        z=Z.flatten(),
-        value=input[0:input.shape[0]:1, 650:651:1, 0:input.shape[2]:1].flatten(),
-        opacity=1,  # needs to be small to see through all surfaces
-        surface_count=17,  # needs to be a large number for good volume rendering
-    ))
-    fig1.show()
-
-    X, Y, Z = np.mgrid[0:reference.shape[0]:1, 650:651:1, 0:reference.shape[2]:1]
-
-    fig2 = go.Figure(data=go.Volume(
-        x=X.flatten(),
-        y=Y.flatten(),
-        z=Z.flatten(),
-        value=reference[0:reference.shape[0]:1, 650:651:1, 0:reference.shape[2]:1].flatten(),
-        opacity=1,  # needs to be small to see through all surfaces
-        surface_count=17,  # needs to be a large number for good volume rendering
-    ))
-    fig2.show()
-
-    X, Y, Z = np.mgrid[0:warped_image.shape[0]:1, 650:651:1, 0:warped_image.shape[2]:1]
-
-    fig3 = go.Figure(data=go.Volume(
-        x=X.flatten(),
-        y=Y.flatten(),
-        z=Z.flatten(),
-        value=warped_image[0:warped_image.shape[0]:1, 650:651:1, 0:warped_image.shape[2]:1].flatten(),
-        opacity=1,  # needs to be small to see through all surfaces
-        surface_count=17,  # needs to be a large number for good volume rendering
-    ))
-    fig3.show()
-
-    X, Y, Z = np.mgrid[0:warped_annotation.shape[0]:1, 650:651:1, 0:warped_annotation.shape[2]:1]
-
-    fig4 = go.Figure(data=go.Volume(
-        x=X.flatten(),
-        y=Y.flatten(),
-        z=Z.flatten(),
-        value=warped_annotation[0:warped_annotation.shape[0]:1, 650:651:1, 0:warped_annotation.shape[2]:1].flatten(),
-        opacity=1,  # needs to be small to see through all surfaces
-        surface_count=17,  # needs to be a large number for good volume rendering
-    ))
-    fig4.show()
-
-
+    # # evaluate warps
+    # X, Y, Z = np.mgrid[0:input.shape[0]:1, 650:651:1, 0:input.shape[2]:1]
+    #
+    # fig1 = go.Figure(data=go.Volume(
+    #     x=X.flatten(),
+    #     y=Y.flatten(),
+    #     z=Z.flatten(),
+    #     value=input[0:input.shape[0]:1, 650:651:1, 0:input.shape[2]:1].flatten(),
+    #     opacity=1,  # needs to be small to see through all surfaces
+    #     surface_count=17,  # needs to be a large number for good volume rendering
+    # ))
+    # fig1.show()
+    #
+    # X, Y, Z = np.mgrid[0:reference.shape[0]:1, 650:651:1, 0:reference.shape[2]:1]
+    #
+    # fig2 = go.Figure(data=go.Volume(
+    #     x=X.flatten(),
+    #     y=Y.flatten(),
+    #     z=Z.flatten(),
+    #     value=reference[0:reference.shape[0]:1, 650:651:1, 0:reference.shape[2]:1].flatten(),
+    #     opacity=1,  # needs to be small to see through all surfaces
+    #     surface_count=17,  # needs to be a large number for good volume rendering
+    # ))
+    # fig2.show()
+    #
+    # X, Y, Z = np.mgrid[0:warped_image.shape[0]:1, 650:651:1, 0:warped_image.shape[2]:1]
+    #
+    # fig3 = go.Figure(data=go.Volume(
+    #     x=X.flatten(),
+    #     y=Y.flatten(),
+    #     z=Z.flatten(),
+    #     value=warped_image[0:warped_image.shape[0]:1, 650:651:1, 0:warped_image.shape[2]:1].flatten(),
+    #     opacity=1,  # needs to be small to see through all surfaces
+    #     surface_count=17,  # needs to be a large number for good volume rendering
+    # ))
+    # fig3.show()
+    #
+    # X, Y, Z = np.mgrid[0:warped_annotation.shape[0]:1, 650:651:1, 0:warped_annotation.shape[2]:1]
+    #
+    # fig4 = go.Figure(data=go.Volume(
+    #     x=X.flatten(),
+    #     y=Y.flatten(),
+    #     z=Z.flatten(),
+    #     value=warped_annotation[0:warped_annotation.shape[0]:1, 650:651:1, 0:warped_annotation.shape[2]:1].flatten(),
+    #     opacity=1,  # needs to be small to see through all surfaces
+    #     surface_count=17,  # needs to be a large number for good volume rendering
+    # ))
+    # fig4.show()
 
     # Invert FLIRT warped annotation back to subject space
     os.system('flirt -in ' + annotation_invwarped_path + ' \
