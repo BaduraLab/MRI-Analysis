@@ -30,7 +30,7 @@ def image2volumetable(image_path, voxel_volume):
     print(np.sum(mouse_table_reference['Volume'][mouse_table_reference['VolumeInteger']!=0]))
 
     # Attach parent path to volumes to table - volumes which are not in structure graph are removed
-    mouse_table_reference = pd.merge(left=structure_graph, right=mouse_table_reference,
+    mouse_table_reference = pd.merge(left=structure, right=mouse_table_reference,
                                      left_on='id_custom', right_on='VolumeInteger', how='outer')
     mouse_table_reference.loc[np.isnan(mouse_table_reference['VoxelNumber']), 'VoxelNumber'] = 0
     mouse_table_reference.loc[np.isnan(mouse_table_reference['Volume']), 'Volume'] = 0
@@ -55,22 +55,25 @@ def image2volumetable(image_path, voxel_volume):
 
 
 # Define
-data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
-allen_fsl_dir = '/usr/local/fsl/data/standard/allen_new'
-analysis_path = '/home/enzo/Desktop/Data/Mouse/Analysis'
-mouse_list = glob.glob(data_path + '/*/*invsynned*cerebellum.nii.gz')
+data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
+reference_path = os.path.join('Data', 'Mouse', 'Reference')
+analysis_path = os.path.join('Data', 'Mouse', 'Analysis')
+mouse_path_list = glob.glob(os.path.join(data_path, '*', '*invsynned*cerebellum.nii.gz'))
+reference_structure_path = os.path.join(reference_path, 'structure_graph_remapped_lowdetail.csv')
+structure = pd.read_csv(reference_structure_path)
 voxel_volume = 0.000125
-nMouse = len(mouse_list)
-allen_structure_table_path_lowdetail = os.path.join(allen_fsl_dir, 'structure_graph_remapped_lowdetail.csv')
-structure_graph = pd.read_csv(allen_structure_table_path_lowdetail)
-Path(analysis_path+'/perstructure').mkdir(parents=True, exist_ok=True)
+
+# Follows
+nMouse = len(mouse_path_list)
+Path(os.path.join(analysis_path, 'perstructure')).mkdir(parents=True, exist_ok=True)
+
 
 
 mouse_table_list = list()
-for iMouse, Mouse in enumerate(mouse_list):
-    subject = Mouse.split('/')[-2]
+for iMouse, Mouse in enumerate(mouse_path_list):
+    subject = Mouse.split(os.path.sep)[-2]
     mouse_table = image2volumetable(Mouse, voxel_volume)
-    mouse_table.to_csv(analysis_path+'/'+subject+'_volumes.csv')
+    mouse_table.to_csv(os.path.join(analysis_path, subject+'_volumes.csv'))
 
     mouse_table['Mouse'] = subject
     mouse_table['Genotype'] = subject.split('_')[0]
@@ -81,65 +84,18 @@ for iMouse, Mouse in enumerate(mouse_list):
     mouse_table_list.append(mouse_table)
 
 mouse_table_all = pd.concat(mouse_table_list, ignore_index=True)
-mouse_table_all.to_csv(analysis_path+'/'+'all'+'_volumes.csv')
-
-
-volume_name = 'Lobule II'
-ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype']].boxplot(by=['Genotype'])
-plt.ylabel('$mm^3$')
-plt.xlabel('Genotype')
-plt.title(volume_name + ' volumes')
-plt.suptitle('') # that's what you're after
-# ax.set_xticklabels(['WT', 'KO'])
-# plt.show()
-plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotype'))
-
-volume_name = 'Substantia nigra, compact part'
-ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype']].boxplot(by=['Genotype'])
-plt.ylabel('$mm^3$')
-plt.xlabel('Genotype')
-plt.title(volume_name + ' volumes')
-plt.suptitle('') # that's what you're after
-# ax.set_xticklabels(['WT', 'KO'])
-# plt.show()
-plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotype'))
-
-volume_name = 'Substantia nigra, reticular part'
-ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype']].boxplot(by=['Genotype'])
-plt.ylabel('$mm^3$')
-plt.xlabel('Genotype')
-plt.title(volume_name + ' volumes')
-plt.suptitle('') # that's what you're after
-# ax.set_xticklabels(['WT', 'KO'])
-# plt.show()
-plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotype'))
-
-# Plotting by genotype and sex
-volume_name = 'Lobules IV-V'
-ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype', 'Sex']].boxplot(by=['Genotype', 'Sex'])
-plt.ylabel('$mm^3$')
-plt.xlabel('Genotype and Sex')
-plt.title(volume_name + ' volumes')
-plt.suptitle('') # that's what you're after
-# ax.set_xticklabels(['WT', 'KO'])
-# plt.show()
-plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotypeSex'))
+mouse_table_all.to_csv(os.path.join(analysis_path, 'all'+'_volumes.csv'))
 
 
 
-
-
-
-
-
-# in volume table go through each structure and determine the p-value between genotypes, create a new table
+# In volume table, go through each structure and determine the p-value between genotypes, create a new p-value table
 mouse_table_pername_list = list()
 mouse_table_all_nobackground = mouse_table_all.loc[np.logical_not(pd.isnull(mouse_table_all['name']))]
 # mouse_table_all.loc[pd.isnull(mouse_table_all['name']), 'name'] = 'background'
 for nameStruct in np.unique(np.array(mouse_table_all_nobackground['name'].astype('category'))):
     mouse_table_nameStruct = mouse_table_all_nobackground[mouse_table_all_nobackground['name'] == nameStruct]
-    mouse_table_nameStruct_WT = mouse_table_nameStruct[mouse_table_all_nobackground['Genotype'] == 'WT']
-    mouse_table_nameStruct_KO = mouse_table_nameStruct[mouse_table_all_nobackground['Genotype'] == 'KO']
+    mouse_table_nameStruct_WT = mouse_table_nameStruct.loc[mouse_table_all_nobackground['Genotype'] == 'WT']
+    mouse_table_nameStruct_KO = mouse_table_nameStruct.loc[mouse_table_all_nobackground['Genotype'] == 'KO']
     [t_stat, p_val] = ttest_ind(mouse_table_nameStruct_WT['Volume'],
         mouse_table_nameStruct_KO['Volume'],
         equal_var=False)
@@ -150,10 +106,58 @@ for nameStruct in np.unique(np.array(mouse_table_all_nobackground['name'].astype
                                                   'WT_mean': [mean_WT],
                                                   'KO_mean': [mean_KO]}))
     nameStruct_filename = "".join([c for c in nameStruct if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
-    mouse_table_nameStruct.to_csv(analysis_path+'/perstructure/'+nameStruct_filename+'_volumes.csv')
+    mouse_table_nameStruct.to_csv(os.path.join(analysis_path, 'perstructure', nameStruct_filename+'_volumes.csv'))
 mouse_table_pername = pd.concat(mouse_table_pername_list, ignore_index=True)
 mouse_table_pername = mouse_table_pername.sort_values(by='pVal')
-mouse_table_pername.to_csv(analysis_path+'/'+'pername'+'_volumes.csv')
+mouse_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'))
+
+
+
+
+
+
+#
+#
+# volume_name = 'Lobule II'
+# ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype']].boxplot(by=['Genotype'])
+# plt.ylabel('$mm^3$')
+# plt.xlabel('Genotype')
+# plt.title(volume_name + ' volumes')
+# plt.suptitle('') # that's what you're after
+# # ax.set_xticklabels(['WT', 'KO'])
+# # plt.show()
+# plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotype'))
+#
+# volume_name = 'Substantia nigra, compact part'
+# ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype']].boxplot(by=['Genotype'])
+# plt.ylabel('$mm^3$')
+# plt.xlabel('Genotype')
+# plt.title(volume_name + ' volumes')
+# plt.suptitle('') # that's what you're after
+# # ax.set_xticklabels(['WT', 'KO'])
+# # plt.show()
+# plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotype'))
+#
+# volume_name = 'Substantia nigra, reticular part'
+# ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype']].boxplot(by=['Genotype'])
+# plt.ylabel('$mm^3$')
+# plt.xlabel('Genotype')
+# plt.title(volume_name + ' volumes')
+# plt.suptitle('') # that's what you're after
+# # ax.set_xticklabels(['WT', 'KO'])
+# # plt.show()
+# plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotype'))
+#
+# # Plotting by genotype and sex
+# volume_name = 'Lobules IV-V'
+# ax = mouse_table_all[mouse_table_all['name']==volume_name][['Volume', 'Genotype', 'Sex']].boxplot(by=['Genotype', 'Sex'])
+# plt.ylabel('$mm^3$')
+# plt.xlabel('Genotype and Sex')
+# plt.title(volume_name + ' volumes')
+# plt.suptitle('') # that's what you're after
+# # ax.set_xticklabels(['WT', 'KO'])
+# # plt.show()
+# plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotypeSex'))
 
 
 
