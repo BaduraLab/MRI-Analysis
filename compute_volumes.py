@@ -84,7 +84,7 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     mouse_table_list.append(mouse_table)
 
 mouse_table_all = pd.concat(mouse_table_list, ignore_index=True)
-mouse_table_all.to_csv(os.path.join(analysis_path, 'all'+'_volumes.csv'))
+mouse_table_all.to_csv(os.path.join(analysis_path, 'all_volumes.csv'))
 
 
 

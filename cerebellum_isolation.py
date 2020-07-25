@@ -18,6 +18,8 @@ from scipy.stats import ttest_ind
 # analysis_path = 'C:/Users/enzo/Downloads/Study/Current Courses/MEP/Data/Mouse/Analysis'
 # allen_image = os.path.join(allen_path, 'annotation_25_reoriented.nii.gz')
 # allen_image_flirted = os.path.join(allen_path, 'annotation_25_to_AMBMC_flirted.nii.gz')
+data_path = os.path.join('Data', 'Mouse', 'Processed')
+glob.glob(os.path.join(data_path, '*'))
 mouse_path = '/home/enzo/Desktop/Data/Mouse'
 allen_path = '/usr/local/fsl/data/standard/allen'
 data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
