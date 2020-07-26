@@ -6,7 +6,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import glob
-import fsl.wrappers
+# import fsl.wrappers
 import csv
 from scipy.stats import ttest_ind
 from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
