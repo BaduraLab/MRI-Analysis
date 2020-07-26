@@ -20,9 +20,8 @@ data_path = os.path.join('Data', 'Mouse', 'Processed')
 mouse_path_list = glob.glob(os.path.join(data_path, '*'))
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # average_template_50_to_AMBMC_flirted.nii.gz
-reference_template_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
-# reference_annotation_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
-reference_annotation_path = os.path.join(data_path, 'WT_50', 'WT_50.nii.gz')
+reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
+reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 
 # Loop through mice
 for iMousePath, MousePath in enumerate(mouse_path_list):

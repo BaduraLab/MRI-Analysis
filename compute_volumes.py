@@ -9,6 +9,7 @@ import glob
 import csv
 from scipy.stats import ttest_ind
 from pathlib import Path
+import numpy_indexed as npi
 
 
 
@@ -60,12 +61,15 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 analysis_path = os.path.join('Data', 'Mouse', 'Analysis')
 mouse_path_list = glob.glob(os.path.join(data_path, '*', '*invsynned*cerebellum.nii.gz'))
 reference_structure_path = os.path.join(reference_path, 'structure_graph_remapped_lowdetail.csv')
-structure = pd.read_csv(reference_structure_path)
 voxel_volume = 0.000125
+annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 
 # Follows
 nMouse = len(mouse_path_list)
+structure = pd.read_csv(reference_structure_path)
 Path(os.path.join(analysis_path, 'perstructure')).mkdir(parents=True, exist_ok=True)
+annotation_image = nib.load(annotation_path)
+annotation = annotation_image.get_fdata()
 
 
 
@@ -110,6 +114,23 @@ for nameStruct in np.unique(np.array(mouse_table_all_nobackground['name'].astype
 mouse_table_pername = pd.concat(mouse_table_pername_list, ignore_index=True)
 mouse_table_pername = mouse_table_pername.sort_values(by='pVal')
 mouse_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'))
+
+# Add id_custom column to pVal table
+mouse_table_pername = pd.merge(left=mouse_table_pername, right=structure.loc[:, ['name', 'id_custom']],
+                               left_on='name', right_on='name')
+
+# Create reference image with p-values in the image instead of
+annotation_shape = annotation.shape
+annotation = annotation.reshape(-1)
+annotation = npi.remap(annotation, list(mouse_table_pername['id_custom']), list(mouse_table_pername['pVal']))
+annotation = annotation.reshape(annotation_shape)
+annotation_pVal_image = nib.Nifti1Image(annotation, np.eye(4))
+annotation_pVal_image.set_qform(annotation_image.get_qform(), code=1)
+annotation_pVal_image.set_sform(np.eye(4), code=0)
+annotation_pVal_path = annotation_path.split(os.sep)[-1].split('.')[0]
+annotation_pVal_path = annotation_pVal_path + '_pVal' + '.nii.gz'
+annotation_pVal_path = os.path.join(analysis_path, annotation_pVal_path)
+nib.save(annotation_pVal_image, annotation_pVal_path)
 
 
 

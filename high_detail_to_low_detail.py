@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
-import os, itk
-import json
+import os
+# import itk
+# import json
 import pandas as pd
-from allensdk.api.queries.reference_space_api import ReferenceSpaceApi
-from allensdk.api.queries.ontologies_api import OntologiesApi
-from allensdk.core.structure_tree import StructureTree
-from allensdk.config.manifest import Manifest
-from allensdk.core.mouse_connectivity_cache import MouseConnectivityCache
+# from allensdk.api.queries.reference_space_api import ReferenceSpaceApi
+# from allensdk.api.queries.ontologies_api import OntologiesApi
+# from allensdk.core.structure_tree import StructureTree
+# from allensdk.config.manifest import Manifest
+# from allensdk.core.mouse_connectivity_cache import MouseConnectivityCache
 import nibabel as nib
 import numpy as np
 import numpy_indexed as npi
