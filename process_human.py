@@ -16,7 +16,7 @@ reference_path = os.path.join('Data', 'Human', 'Reference')
 # annotation_path = os.path.join('atlases', 'Cerebellum', 'Talairach', 'Talairach-labels-1mm.nii.gz')
 annotation_path_list = [os.path.join(reference_path, 'atlases', 'Cerebellum', 'Cerebellum-MNIfnirt-prob-1mm.nii.gz'),
                         os.path.join(reference_path, 'atlases', 'Cerebellum', 'Talairach', 'Talairach-labels-1mm.nii.gz')]
-template_path = os.path.join('standard', 'MNI152_T1_1mm_brain.nii.gz')
+template_path = os.path.join(reference_path, 'standard', 'MNI152_T1_1mm_brain.nii.gz')
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 
 
