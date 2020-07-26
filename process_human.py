@@ -125,7 +125,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
         # Concatenate in 4D and save with nib
         annotation_invsynned_invflirted_4D_perannotation = np.array(annotation_invsynned_invflirted_list_perannotation).transpose(1, 2, 3, 0)
         annotation_invsynned_invflirted_4D_image_perannotation = nib.Nifti1Image(annotation_invsynned_invflirted_4D_perannotation, np.eye(4))
-        annotation_invsynned_invflirted_4D_image_perannotation.set_qform(input_image.get_qform(), code=1)
+        annotation_invsynned_invflirted_4D_image_perannotation.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
         annotation_invsynned_invflirted_4D_image_perannotation.set_sform(np.eye(4), code=0)
         annotation_invsynned_invflirted_4D_path_perannotation = InputPath.split('.')[0]+'_annotation_'+annotation_name+'.nii.gz'
         nib.save(annotation_invsynned_invflirted_4D_image_perannotation, annotation_invsynned_invflirted_4D_path_perannotation)
@@ -134,7 +134,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
     # Concatenate in 4D and save with nib
     annotation_invsynned_invflirted_4D = np.array(annotation_invsynned_invflirted_list).transpose(1, 2, 3, 0)
     annotation_invsynned_invflirted_4D_image = nib.Nifti1Image(annotation_invsynned_invflirted_4D, np.eye(4))
-    annotation_invsynned_invflirted_4D_image.set_qform(input_image.get_qform(), code=1)
+    annotation_invsynned_invflirted_4D_image.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
     annotation_invsynned_invflirted_4D_image.set_sform(np.eye(4), code=0)
     nib.save(annotation_invsynned_invflirted_4D_image, annotation_invsynned_invflirted_4D_path)
 

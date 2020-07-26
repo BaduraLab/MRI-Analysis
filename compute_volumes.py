@@ -116,7 +116,7 @@ mouse_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv')
 # Add id_custom column to pVal table
 mouse_table_pername = pd.merge(left=mouse_table_pername, right=structure.loc[:, ['name', 'id_custom']],
                                left_on='name', right_on='name')
-mouse_table_pername['pVal_inv'] = 1-mouse_table_pername['pVal']
+mouse_table_pername['pVal_inv'] = np.abs(np.log10(mouse_table_pername['pVal']))
 
 # Create reference image with p-values in the image instead of structure integers
 annotation_image = nib.load(annotation_path)
