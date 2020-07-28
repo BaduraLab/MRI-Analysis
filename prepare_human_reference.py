@@ -5,7 +5,7 @@ import nibabel as nib
 
 reference_path = os.path.join('Data', 'Human', 'Reference')
 subcortical_path = os.path.join(reference_path,
-    'A high-resolution probabilistic in vivo atlas of human subcortical brain nuclei')
+    'subcortical')
 subcortical_image_4D_path = os.path.join(subcortical_path, 'CIT168toMNI152_prob_atlas_bilat_1mm.nii.gz')
 
 subcortical_path_list = glob.glob(os.path.join(subcortical_path,

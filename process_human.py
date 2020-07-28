@@ -19,14 +19,12 @@ annotation_path_list = [os.path.join(reference_path,
                                      'Cerebellum',
                                      'Cerebellum-MNIfnirt-prob-1mm.nii.gz'),
                         os.path.join(reference_path,
-                                     'atlases',
-                                     'A high-resolution probabilistic in vivo atlas of human subcortical brain nuclei',
+                                     'subcortical',
                                      'CIT168toMNI152_prob_atlas_bilat_1mm.nii.gz')]
 template_MNI_path = os.path.join(reference_path, 'standard', 'MNI152_T1_1mm_brain.nii.gz')
 template_path_list = [template_MNI_path,
                       os.path.join(reference_path,
-                         'atlases',
-                         'A high-resolution probabilistic in vivo atlas of human subcortical brain nuclei',
+                         'subcortical',
                          'CIT168_T1w_700um.nii.gz')]
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 
@@ -142,7 +140,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
             annotation_invsynned_invflirted_4D = annotation_invsynned_invflirted_4D_image.get_fdata()
             annotation_invsynned_invflirted_maxprob = np.max(annotation_invsynned_invflirted_4D, axis=3)
             annotation_invsynned_invflirted_maxprob_image = nib.Nifti1Image(annotation_invsynned_invflirted_maxprob, np.eye(4))
-            annotation_invsynned_invflirted_maxprob_image.set_qform(annotation_invsynned_invflirted_path.get_qform(), code=1)
+            annotation_invsynned_invflirted_maxprob_image.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
             annotation_invsynned_invflirted_maxprob_image.set_sform(np.eye(4), code=0)
             nib.save(annotation_invsynned_invflirted_maxprob_image, annotation_invsynned_invflirted_maxprob_path)
 
