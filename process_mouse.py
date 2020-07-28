@@ -85,8 +85,8 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     # Inverse SyN reference to subject space
     reference_annotation_invsynned = mapping.transform_inverse(reference_annotation, interpolation='nearest')
     reference_annotation_invsynned_image = nib.Nifti1Image(reference_annotation_invsynned,
-                                                           mouse_image.affine,
-                                                           mouse_image.header)
+                                                           mouse_masked_flirted_image.affine,
+                                                           mouse_masked_flirted_image.header)
     nib.save(reference_annotation_invsynned_image, reference_annotation_invsynned_path)
 
     # inflirt invsynned annotation to flirted image to get annotation of original image

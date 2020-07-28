@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
-import os, itk
+import os
+import itk
 import json
 import pandas as pd
 from allensdk.api.queries.reference_space_api import ReferenceSpaceApi
@@ -12,8 +13,20 @@ from allensdk.core.mouse_connectivity_cache import MouseConnectivityCache
 import nibabel as nib
 import numpy as np
 import numpy_indexed as npi
+import glob
 
 # the annotation download writes a file, so we will need somewhere to put it
+
+#######################change so that system independent and includes flirted and synned allen to AMBMC
+
+# Define
+data_path = os.path.join('Data', 'Mouse', 'Processed')
+mouse_path_list = glob.glob(os.path.join(data_path, '*'))
+reference_path = os.path.join('Data', 'Mouse', 'Reference')
+# average_template_50_to_AMBMC_flirted.nii.gz
+reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
+reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
+
 allen_dir = '/home/enzo/Desktop/allen'
 allen_fsl_dir = '/usr/local/fsl/data/standard/allen_new'
 Manifest.safe_mkdir(allen_dir)

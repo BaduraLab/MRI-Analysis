@@ -1,11 +1,18 @@
-%suit
-t1_path = {'C:\Users\Enzon\Documents\Projects\MEP\mep-scripts\Data\Human\Processed\patient\patient_reoriented.nii', 'C:\Users\Enzon\Documents\Projects\MEP\mep-scripts\Data\Human\Processed\control2\control2_reoriented.nii', 'C:\Users\Enzon\Documents\Projects\MEP\mep-scripts\Data\Human\Processed\control1\control1_reoriented.nii'};
-% t1_path{1}
-suit_isolate_seg(t1_path(1))
-suit_isolate_seg(t1_path(2))
-suit_isolate_seg(t1_path(3))
+% define
+data_path = 'C:\Users\Enzon\Documents\Projects\MEP\mep-scripts\Data\';
+t1_path = {[data_path, 'Human\Processed\patient\patient_reoriented.nii'], ...
+    [data_path, 'Human\Processed\control2\control2_reoriented.nii'], ...
+    [data_path, 'Human\Processed\control1\control1_reoriented.nii']};
 
+% follows
 nT1 = length(t1_path);
+
+% cerebellar isolation
+for iT1 = 1:nT1
+    suit_isolate_seg(t1_path(iT1), 'keeptempfiles', 1)
+end
+
+% 
 for iT1 = 1:nT1
     [t1_filepath, t1_filename, ~] = fileparts(t1_path{iT1});
     
@@ -16,6 +23,7 @@ for iT1 = 1:nT1
     suit_normalize_dartel(job)
 end
 
+%
 clear job
 V = cell(1, nT1);
 for iT1 = 1:nT1
