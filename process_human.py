@@ -30,6 +30,14 @@ input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 
 # Define
 probability_threshold = 0.2
+def saveImage(image_fdata, path, image_qform_template):
+    image = nib.Nifti1Image(image_fdata, np.eye(4))
+    image.set_qform(image_qform_template.get_qform(), code=1)
+    image.set_sform(np.eye(4), code=0)
+    nib.save(image, path)
+
+
+
 
 
 # Loop through inputs
@@ -82,8 +90,9 @@ for iInputPath, InputPath in enumerate(input_path_list):
         input_flirted_synned_image.set_qform(template_image.get_qform(), code=1)
         input_flirted_synned_image.set_sform(np.eye(4), code=0)
         nib.save(input_flirted_synned_image, input_flirted_synned_path)
-        annotation_invsynned_invflirted_4D_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'.nii.gz'
+        annotation_invsynned_invflirted_4D_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'_4D.nii.gz'
         annotation_invsynned_invflirted_maxprob_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'_maxprob.nii.gz'
+        annotation_invsynned_invflirted_thresholded_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'.nii.gz'
 
 
 
@@ -139,10 +148,17 @@ for iInputPath, InputPath in enumerate(input_path_list):
         if not is3D:
             annotation_invsynned_invflirted_4D = annotation_invsynned_invflirted_4D_image.get_fdata()
             annotation_invsynned_invflirted_maxprob = np.max(annotation_invsynned_invflirted_4D, axis=3)
-            annotation_invsynned_invflirted_maxprob_image = nib.Nifti1Image(annotation_invsynned_invflirted_maxprob, np.eye(4))
-            annotation_invsynned_invflirted_maxprob_image.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
-            annotation_invsynned_invflirted_maxprob_image.set_sform(np.eye(4), code=0)
-            nib.save(annotation_invsynned_invflirted_maxprob_image, annotation_invsynned_invflirted_maxprob_path)
+            annotation_invsynned_invflirted_argprob = np.argmax(annotation_invsynned_invflirted_4D, axis=3)
+            annotation_invsynned_invflirted_thrprob = annotation_invsynned_invflirted_maxprob > probability_threshold
+            annotation_invsynned_invflirted = annotation_invsynned_invflirted_argprob \
+                                            * annotation_invsynned_invflirted_thrprob
+
+            saveImage(image_fdata=annotation_invsynned_invflirted_maxprob,
+                      path=annotation_invsynned_invflirted_maxprob_path,
+                      image_qform_template=annotation_invsynned_invflirted_image)
+            saveImage(image_fdata=annotation_invsynned_invflirted,
+                      path=annotation_invsynned_invflirted_thresholded_path,
+                      image_qform_template=annotation_invsynned_invflirted_image)
 
         # Add list of slices of 4D images to list for creation of composite image
         annotation_invsynned_invflirted_image_list_list.append(annotation_invsynned_invflirted_image_list)
