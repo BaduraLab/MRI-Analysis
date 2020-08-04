@@ -6,6 +6,7 @@ from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
 from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
 import glob
+from pathlib import Path
 
 
 
@@ -20,20 +21,27 @@ annotation_path_list = [os.path.join(reference_path,
                                      'Cerebellum-MNIfnirt-prob-1mm.nii.gz'),
                         os.path.join(reference_path,
                                      'subcortical',
-                                     'CIT168toMNI152_prob_atlas_bilat_1mm.nii.gz')]
+                                     'prob_atlas_bilateral.nii.gz'),
+                        os.path.join(reference_path,
+                                     'CerebrA',
+                                     'mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')]
 template_MNI_path = os.path.join(reference_path, 'standard', 'MNI152_T1_1mm_brain.nii.gz')
 template_path_list = [template_MNI_path,
                       os.path.join(reference_path,
                          'subcortical',
-                         'CIT168_T1w_700um.nii.gz')]
+                         'CIT168_T1w_700um.nii.gz'),
+                      os.path.join(reference_path,
+                                   'CerebrA',
+                                   'mni_icbm152_nlin_sym_09c_masked.nii')]
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 
 # Define
-probability_threshold = 0.2
+probability_threshold = 0.2 # Might be changed tp list the same length as number of annotations
 def saveImage(image_fdata, path, image_qform_template):
     image = nib.Nifti1Image(image_fdata, np.eye(4))
     image.set_qform(image_qform_template.get_qform(), code=1)
-    image.set_sform(np.eye(4), code=0)
+    # image.set_sform(np.eye(4), code=0)
+    image.set_sform(image_qform_template.get_qform(), code=0)
     nib.save(image, path)
 
 
@@ -46,7 +54,11 @@ for iInputPath, InputPath in enumerate(input_path_list):
     print(InputPath)
     print(datetime.datetime.now())
 
-    annotation_invsynned_invflirted_composite_path = InputPath.split('.')[0]+'_annotation_composite.nii.gz'
+    input_dirname = os.path.dirname(InputPath)
+    input_name = os.path.basename(InputPath).split('_')[0]
+    input_noext = os.path.join(input_dirname, input_name)
+
+    annotation_invsynned_invflirted_composite_path = input_noext+'_annotation_composite.nii.gz'
 
     # Begin annotation loop
     annotation_invsynned_invflirted_image_list_list = list()
@@ -55,11 +67,13 @@ for iInputPath, InputPath in enumerate(input_path_list):
         template_name = template_path.split(os.sep)[-1].split('.')[0]
         print(iAnnotationPath)
 
-        input_flirted_path = InputPath.split('.')[0]+'_flirted_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
-        input_flirt_path = InputPath.split('.')[0]+'_flirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
-        input_invflirt_path = InputPath.split('.')[0]+'_invflirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
-        input_flirted_synned_path = InputPath.split('.')[0]+'_flirted_synned_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
-        annotation_name = AnnotationPath.split(os.sep)[-1].split('.')[0]
+        input_flirted_path = input_noext+'_flirted_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
+        input_flirt_path = input_noext+'_flirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
+        input_invflirt_path = input_noext+'_invflirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
+        input_flirted_synned_path = input_noext+'_flirted_synned_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
+        annotation_name = AnnotationPath.split(os.sep)[-1].split('.')[0].split('_')[0]
+        annotation_outdir = Path(input_dirname, annotation_name)
+        annotation_outdir.mkdir(exist_ok=True)
 
         # FLIRT input to reference space
         os.system('flirt -in ' + InputPath + ' \
@@ -84,15 +98,17 @@ for iInputPath, InputPath in enumerate(input_path_list):
                                static_grid2world=template_image.get_qform(), moving_grid2world=input_flirted_image.get_qform())
 
         input_flirted_synned = mapping.transform(input_flirted)
+        input_flirted_synned_invsynned = mapping.transform_inverse(input_flirted_synned)
+        np.sum(input_flirted_synned_invsynned - input_flirted)
 
         # save the flirted and synned input, this is the input aligned to the reference elastically
         input_flirted_synned_image = nib.Nifti1Image(input_flirted_synned, np.eye(4))
         input_flirted_synned_image.set_qform(template_image.get_qform(), code=1)
         input_flirted_synned_image.set_sform(np.eye(4), code=0)
         nib.save(input_flirted_synned_image, input_flirted_synned_path)
-        annotation_invsynned_invflirted_4D_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'_4D.nii.gz'
-        annotation_invsynned_invflirted_maxprob_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'_maxprob.nii.gz'
-        annotation_invsynned_invflirted_thresholded_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'.nii.gz'
+        annotation_invsynned_invflirted_4D_path = input_noext+'_annotation_'+annotation_name+'_4D.nii.gz'
+        annotation_invsynned_invflirted_maxprob_path = input_noext+'_annotation_'+annotation_name+'_maxprob.nii.gz'
+        annotation_invsynned_invflirted_thresholded_path = input_noext+'_annotation_'+annotation_name+'_thrarg.nii.gz'
 
 
 
@@ -100,40 +116,45 @@ for iInputPath, InputPath in enumerate(input_path_list):
         annotation_4D = annotation_4D_image.get_fdata()
         annotation_4D_shape = annotation_4D.shape
         interpolation_method = 'linear'
+        interpolation_method_flirt = 'trilinear'
         is3D = len(annotation_4D_shape) == 3
         if is3D:  # if it is not actually a 4D image, extend it to be 4D
             annotation_4D_shape = annotation_4D_shape + tuple([1])
             annotation_4D = annotation_4D.reshape(annotation_4D_shape)
             interpolation_method = 'nearest'
+            interpolation_method_flirt = 'nearestneighbour'
 
         # Loop over 4th dimension of annotation, for label annotation this defaults to one iteration (no loop really)
         annotation_invsynned_invflirted_image_list = list()
         for i4D in range(annotation_4D_shape[3]):
-            print(i4D)
+            print('i4D='+str(i4D))
 
             annotation = annotation_4D[:, :, :, i4D]
+
             annotation_invsynned = mapping.transform_inverse(annotation, interpolation=interpolation_method) # nearest also works for non-probabilistic atlases!
 
             # Define annotation output paths automatically while saving them to lists
-            annotation_invsynned_path = InputPath.split('.')[0]+'_flirted_annotation_'+annotation_name+'_'+str(i4D)+'.nii.gz'
-            annotation_invsynned_invflirted_path = InputPath.split('.')[0]+'_annotation_'+annotation_name+'_'+str(i4D)+'.nii.gz'
+            annotation_invsynned_path = os.path.join(annotation_outdir,
+                                                     input_name+'_flirted_annotation_'+annotation_name+'_'+str(i4D+1)+'.nii.gz')
+            annotation_invsynned_invflirted_path = os.path.join(annotation_outdir,
+                                                                input_name+'_annotation_'+annotation_name+'_'+str(i4D+1)+'.nii.gz')
             # annotation_invsynned_path_list.append(annotation_invsynned_path)
             # annotation_invsynned_invflirted_path_list.append(annotation_invsynned_invflirted_path)
 
             # save invsynned annotation (this is then the annotation of the flirted image)
             annotation_invsynned_image = nib.Nifti1Image(annotation_invsynned, np.eye(4))
-            annotation_invsynned_image.set_qform(input_flirted_image.get_qform(), code=1)
+            annotation_invsynned_image.set_qform(annotation_4D_image.get_qform(), code=1)
             annotation_invsynned_image.set_sform(np.eye(4), code=0)
             nib.save(annotation_invsynned_image, annotation_invsynned_path)
 
-            # inflirt invsynned annotation to flirted image to get annotation of original image
+            # invflirt invsynned annotation to flirted image to get annotation of original image
             os.system('convert_xfm -omat '+input_invflirt_path+' -inverse '+input_flirt_path)
             os.system('flirt -in ' + annotation_invsynned_path + ' \
                              -ref ' + InputPath + ' \
                              -out ' + annotation_invsynned_invflirted_path + ' \
                              -init ' + input_invflirt_path + ' \
                              -applyxfm \
-                             -interp nearestneighbour \
+                             -interp ' + interpolation_method_flirt + ' \
                              -verbose 1')
 
             # Load annotation of native image and save to list
@@ -148,7 +169,9 @@ for iInputPath, InputPath in enumerate(input_path_list):
         if not is3D:
             annotation_invsynned_invflirted_4D = annotation_invsynned_invflirted_4D_image.get_fdata()
             annotation_invsynned_invflirted_maxprob = np.max(annotation_invsynned_invflirted_4D, axis=3)
-            annotation_invsynned_invflirted_argprob = np.argmax(annotation_invsynned_invflirted_4D, axis=3)
+            annotation_invsynned_invflirted_maxprob = annotation_invsynned_invflirted_maxprob / \
+                                                      np.max(annotation_invsynned_invflirted_maxprob)
+            annotation_invsynned_invflirted_argprob = np.argmax(annotation_invsynned_invflirted_4D, axis=3)+1
             annotation_invsynned_invflirted_thrprob = annotation_invsynned_invflirted_maxprob > probability_threshold
             annotation_invsynned_invflirted = annotation_invsynned_invflirted_argprob \
                                             * annotation_invsynned_invflirted_thrprob
@@ -156,7 +179,10 @@ for iInputPath, InputPath in enumerate(input_path_list):
             saveImage(image_fdata=annotation_invsynned_invflirted_maxprob,
                       path=annotation_invsynned_invflirted_maxprob_path,
                       image_qform_template=annotation_invsynned_invflirted_image)
-            saveImage(image_fdata=annotation_invsynned_invflirted,
+            saveImage(image_fdata=annotation_invsynned_invflirted_thrprob.astype('float64'),
+                      path=annotation_invsynned_invflirted_maxprob_path.split('.')[0]+'_thresholded.nii.gz',
+                      image_qform_template=annotation_invsynned_invflirted_image)
+            saveImage(image_fdata=annotation_invsynned_invflirted.astype(np.int16),
                       path=annotation_invsynned_invflirted_thresholded_path,
                       image_qform_template=annotation_invsynned_invflirted_image)
 

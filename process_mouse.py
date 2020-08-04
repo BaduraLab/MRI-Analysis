@@ -58,7 +58,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_image = nib.Nifti1Image(mouse_masked, mouse_image.affine, mouse_image.header)
     nib.save(mouse_masked_image, mouse_masked_path)
 
-    # Invert FLIRT warped annotation back to subject space
+    # FLIRT subject to reference
     os.system('flirt -in ' + mouse_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + mouse_masked_flirted_path + ' \
