@@ -39,7 +39,7 @@ for iPath, Path in enumerate(reference_path_list):
     print('s')
     image.set_sform(image.affine, code=0)
     print('save')
-    nib.save(image, Path)
+    nib.save(image, Path.split('.')[0]+'_reoriented.nii')
 
 
 # ## subcortical
