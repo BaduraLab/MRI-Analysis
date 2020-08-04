@@ -3,9 +3,12 @@ import os
 import glob
 import nibabel as nib
 import pandas as pd
+from pathlib import Path
 
 # Define paths
 reference_path = os.path.join('Data', 'Human', 'Reference')
+reference_path_list = list(set(Path(reference_path).rglob('*.nii')) |
+                           set(Path(reference_path).rglob('*.nii.gz')))
 
 subcortical_path = os.path.join(reference_path, 'subcortical')
 subcortical_image_4D_path = os.path.join(subcortical_path, 'CIT168toMNI152_prob_atlas_bilat_1mm.nii.gz')
@@ -19,6 +22,26 @@ CerebrA_masked_path = os.path.join(CerebrA_path, 'mni_icbm152_t1_tal_nlin_sym_09
 CerebrA_structure_path = os.path.join(CerebrA_path, 'CerebrA_LabelDetails.csv')
 CerebrA_structure_adjusted_path = os.path.join(CerebrA_path, 'CerebrA.csv')
 
+
+
+
+## All  .nii or .nii.gz files in Reference folder
+# set sform to unknown (code=0) and qform to affine
+for iPath, Path in enumerate(reference_path_list):
+    print(Path)
+    print(iPath)
+
+    image = nib.load(Path)
+    print('canonical')
+    image = nib.as_closest_canonical(image)
+    print('q')
+    image.set_qform(image.affine, code=1)
+    print('s')
+    image.set_sform(image.affine, code=0)
+    print('save')
+    nib.save(image, Path)
+
+
 # ## subcortical
 #
 # # convert all subcortical reference files from LAS to RAS
@@ -29,8 +52,7 @@ CerebrA_structure_adjusted_path = os.path.join(CerebrA_path, 'CerebrA.csv')
 #     image.set_sform(image.affine, code=0)
 #     nib.save(image, Path)
 #
-#     # transform heeeere to mni space
-#     # Path
+#     # Path##########
 #
 # # create 4D probability atlas image
 # subcortical_image_list = list()

@@ -25,23 +25,29 @@ annotation_path_list = [os.path.join(reference_path,
                         os.path.join(reference_path,
                                      'CerebrA',
                                      'mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')]
-template_MNI_path = os.path.join(reference_path, 'standard', 'MNI152_T1_1mm_brain.nii.gz')
-template_path_list = [template_MNI_path,
+template_path_list = [os.path.join(reference_path,
+                                   'standard',
+                                   'MNI152_T1_1mm_brain.nii.gz'),
                       os.path.join(reference_path,
                          'subcortical',
                          'CIT168_T1w_700um.nii.gz'),
                       os.path.join(reference_path,
                                    'CerebrA',
-                                   'mni_icbm152_nlin_sym_09c_masked.nii')]
+                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked.nii')]
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 
 # Define
 probability_threshold = 0.2 # Might be changed tp list the same length as number of annotations
 def saveImage(image_fdata, path, image_qform_template):
-    image = nib.Nifti1Image(image_fdata, np.eye(4))
-    image.set_qform(image_qform_template.get_qform(), code=1)
+    # image = nib.Nifti1Image(image_fdata, np.eye(4))
+    # image.set_qform(image_qform_template.get_qform(), code=1)
+    # # image.set_sform(np.eye(4), code=0)
+    # image.set_sform(image_qform_template.get_qform(), code=0)
+    # nib.save(image, path)
+    image = nib.Nifti1Image(image_fdata, image_qform_template.affine, image_qform_template.header)
+    image.set_qform(image_qform_template.affine, code=1)
     # image.set_sform(np.eye(4), code=0)
-    image.set_sform(image_qform_template.get_qform(), code=0)
+    image.set_sform(image_qform_template.affine, code=0)
     nib.save(image, path)
 
 
@@ -185,6 +191,12 @@ for iInputPath, InputPath in enumerate(input_path_list):
             saveImage(image_fdata=annotation_invsynned_invflirted.astype(np.int16),
                       path=annotation_invsynned_invflirted_thresholded_path,
                       image_qform_template=annotation_invsynned_invflirted_image)
+        else:
+            annotation_invsynned_invflirted = annotation_invsynned_invflirted_4D_image.get_fdata()
+            saveImage(image_fdata=annotation_invsynned_invflirted.astype(np.int16),
+                      path=annotation_invsynned_invflirted_thresholded_path,
+                      image_qform_template=annotation_invsynned_invflirted_4D_image)
+
 
         # Add list of slices of 4D images to list for creation of composite image
         annotation_invsynned_invflirted_image_list_list.append(annotation_invsynned_invflirted_image_list)
