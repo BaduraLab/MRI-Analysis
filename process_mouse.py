@@ -3,7 +3,7 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import glob
 # import fsl.wrappers
@@ -31,7 +31,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
 
     # Define mouse paths
     mouse_string = MousePath.split(os.sep)[-1]
-    mouse_path = os.path.join(MousePath, mouse_string + '.nii.gz')
+    mouse_path = os.path.join(MousePath, mouse_string + '_reoriented.nii.gz')
     mask_path = os.path.join(MousePath, mouse_string + '_mask_t=500_v=380_k=6.mask.nii.gz')
     mouse_masked_path = os.path.join(MousePath, mouse_string + '_masked.nii.gz')
     mouse_masked_translated_path = os.path.join(MousePath, mouse_string + '_translated.nii.gz')
