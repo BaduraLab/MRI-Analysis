@@ -16,6 +16,7 @@ subcortical_path_list = glob.glob(os.path.join(subcortical_path, '*volume*.nii.g
 subcortical_subcortical_path_list_all = glob.glob(os.path.join(subcortical_path, '*.nii.gz'))
 
 CerebrA_path = os.path.join(reference_path, 'CerebrA')
+CerebrA_path_list = glob.glob(os.path.join(CerebrA_path, '*.nii'))
 CerebrA_template_path = os.path.join(CerebrA_path, 'mni_icbm152_t1_tal_nlin_sym_09c.nii')
 CerebrA_mask_path = os.path.join(CerebrA_path, 'mni_icbm152_t1_tal_nlin_sym_09c_mask.nii')
 CerebrA_masked_path = os.path.join(CerebrA_path, 'mni_icbm152_t1_tal_nlin_sym_09c_masked.nii')
@@ -27,7 +28,7 @@ CerebrA_structure_adjusted_path = os.path.join(CerebrA_path, 'CerebrA.csv')
 
 ## All  .nii or .nii.gz files in Reference folder
 # set sform to unknown (code=0) and qform to affine
-for iPath, Path in enumerate(reference_path_list):
+for iPath, Path in enumerate(CerebrA_path_list):
     print(Path)
     print(iPath)
 
@@ -39,7 +40,7 @@ for iPath, Path in enumerate(reference_path_list):
     print('s')
     image.set_sform(image.affine, code=0)
     print('save')
-    nib.save(image, Path)
+    nib.save(image, Path.split('.')[0]+'_reoriented.nii')
 
 
 # ## subcortical

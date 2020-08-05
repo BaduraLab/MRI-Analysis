@@ -12,7 +12,6 @@ from pathlib import Path
 
 # Define paths
 data_path = os.path.join('Data', 'Human', 'Processed')
-mouse_path_list = glob.glob(os.path.join(data_path, '*'))
 reference_path = os.path.join('Data', 'Human', 'Reference')
 # annotation_path = os.path.join('atlases', 'Cerebellum', 'Talairach', 'Talairach-labels-1mm.nii.gz')
 annotation_path_list = [os.path.join(reference_path,
@@ -24,29 +23,33 @@ annotation_path_list = [os.path.join(reference_path,
                                      'prob_atlas_bilateral.nii.gz'),
                         os.path.join(reference_path,
                                      'CerebrA',
-                                     'mni_icbm152_CerebrA_tal_nlin_sym_09c.nii')]
+                                     'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii'),
+                        os.path.join(reference_path,
+                                     'CerebrA',
+                                     'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii')]
 template_path_list = [os.path.join(reference_path,
                                    'standard',
                                    'MNI152_T1_1mm_brain.nii.gz'),
                       os.path.join(reference_path,
-                         'subcortical',
-                         'CIT168_T1w_700um.nii.gz'),
+                                   'subcortical',
+                                   'CIT168_T1w_700um.nii.gz'),
                       os.path.join(reference_path,
                                    'CerebrA',
-                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked.nii')]
+                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii'),
+                      os.path.join(reference_path,
+                                   'CerebrA',
+                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii')]
+annotation_name_list = ['suit',
+                        'subcortical',
+                        'CerebrA',
+                        'mask']
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 
 # Define
 probability_threshold = 0.2 # Might be changed tp list the same length as number of annotations
 def saveImage(image_fdata, path, image_qform_template):
-    # image = nib.Nifti1Image(image_fdata, np.eye(4))
-    # image.set_qform(image_qform_template.get_qform(), code=1)
-    # # image.set_sform(np.eye(4), code=0)
-    # image.set_sform(image_qform_template.get_qform(), code=0)
-    # nib.save(image, path)
     image = nib.Nifti1Image(image_fdata, image_qform_template.affine, image_qform_template.header)
     image.set_qform(image_qform_template.affine, code=1)
-    # image.set_sform(np.eye(4), code=0)
     image.set_sform(image_qform_template.affine, code=0)
     nib.save(image, path)
 
@@ -70,14 +73,16 @@ for iInputPath, InputPath in enumerate(input_path_list):
     annotation_invsynned_invflirted_image_list_list = list()
     for iAnnotationPath, AnnotationPath in enumerate(annotation_path_list):
         template_path = template_path_list[iAnnotationPath]
-        template_name = template_path.split(os.sep)[-1].split('.')[0]
+        # template_name = template_path.split(os.sep)[-1].split('.')[0]
+        template_name = annotation_name_list[iAnnotationPath]
         print(iAnnotationPath)
 
         input_flirted_path = input_noext+'_flirted_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         input_flirt_path = input_noext+'_flirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
         input_invflirt_path = input_noext+'_invflirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
         input_flirted_synned_path = input_noext+'_flirted_synned_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
-        annotation_name = AnnotationPath.split(os.sep)[-1].split('.')[0].split('_')[0]
+        annotation_name = annotation_name_list[iAnnotationPath]
+        # annotation_name = AnnotationPath.split(os.sep)[-1].split('.')[0].split('_')[0]
         annotation_outdir = Path(input_dirname, annotation_name)
         annotation_outdir.mkdir(exist_ok=True)
 
@@ -237,3 +242,11 @@ for iInputPath, InputPath in enumerate(input_path_list):
     # annotation_invsynned_invflirted_4D_image = nib.Nifti1Image(annotation_invsynned_invflirted_4D, np.eye(4))
     # annotation_invsynned_invflirted_4D_image.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
     # annotation_invsynned_invflirted_4D_image.set_sform(np.eye(4), code=0)
+
+
+    # image.set_sform(np.eye(4), code=0)
+    # image = nib.Nifti1Image(image_fdata, np.eye(4))
+    # image.set_qform(image_qform_template.get_qform(), code=1)
+    # # image.set_sform(np.eye(4), code=0)
+    # image.set_sform(image_qform_template.get_qform(), code=0)
+    # nib.save(image, path)
