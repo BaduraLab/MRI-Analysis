@@ -3,8 +3,7 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import matplotlib
-
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import glob
 import csv
@@ -13,7 +12,9 @@ from pathlib import Path
 import numpy_indexed as npi
 
 
-## Function to compute volumes for image
+
+## Define
+# Function to compute volumes for image
 def subjectPath2volumeTable(subject_path):
     # Compute voxel numbers and volumes and output to table
 
@@ -39,36 +40,37 @@ def subjectPath2volumeTable(subject_path):
 
     return volume_table
 
-
-# Define
+# Define paths
 data_path = os.path.join('Data', 'Human', 'Processed')
 reference_path = os.path.join('Data', 'Human', 'Reference')
 analysis_path = os.path.join('Data', 'Human', 'Analysis')
-input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*Cerebellum*annotation*_thrarg.nii.gz')),
-                        glob.glob(os.path.join(data_path, '*', '*prob*annotation*_thrarg.nii.gz')),
-                        glob.glob(os.path.join(data_path, '*', '*mni*annotation*_thrarg.nii.gz'))]
+input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*annotation_suit_thrarg.nii.gz')),
+                        glob.glob(os.path.join(data_path, '*', '*annotation_subcortical_thrarg.nii.gz')),
+                        glob.glob(os.path.join(data_path, '*', '*annotation_CerebrA_thrarg.nii.gz')),
+                        glob.glob(os.path.join(data_path, '*', '*annotation_mask_thrarg.nii.gz'))]
 structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.txt'),
-                       os.path.join(reference_path, 'CIT168_Reinf_Learn_v1.1.0', 'subcortical.csv'),
-                       os.path.join(reference_path, 'CerebrA', 'CerebrA.csv')]
-# voxel_volume = 0.000125
-# annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
+                       os.path.join(reference_path, 'subcortical', 'subcortical.csv'),
+                       os.path.join(reference_path, 'CerebrA', 'CerebrA.csv'),
+                       os.path.join(reference_path, 'CerebrA', 'mask.csv')]
 
 # Follows
 nAnnotation = len(input_path_list_list)
 structure_table_list = [pd.read_csv(structure_path_list[0],
                                     delim_whitespace=True,
+                                    names=['VolumeInteger', 'name', 'ID']),
+                        pd.read_csv(structure_path_list[1],
                                     names=['VolumeInteger', 'acronym', 'name']),
-                        pd.read_csv(structure_path_list[1]),
-                        pd.read_csv(structure_path_list[2])]
+                        pd.read_csv(structure_path_list[2]),
+                        pd.read_csv(structure_path_list[3])]
 
 
 
-
+## Calculate volumes for all atlases and input files
 output_table_list = list()
 for iAnnotation in range(nAnnotation):
     input_path_list = input_path_list_list[iAnnotation]
     structure_table = structure_table_list[iAnnotation]
-    structure_name = os.path.splitext(os.path.basename(structure_path_list[iAnnotation]))
+    structure_name = os.path.splitext(os.path.basename(structure_path_list[iAnnotation]))[0]
 
     for iInput, Input in enumerate(input_path_list):
         input_name = Input.split(os.sep)[-2]
@@ -79,7 +81,7 @@ for iAnnotation in range(nAnnotation):
 
         # Add structure names to output table by using common volume integers
         output_table = pd.merge(left=output_table,
-                                right=structure_table_list[iInput].loc[:, ['VolumeInteger', 'name']],
+                                right=structure_table_list[iAnnotation].loc[:, ['VolumeInteger', 'name']],
                                 left_on='VolumeInteger',
                                 right_on='VolumeInteger')
 
@@ -92,3 +94,50 @@ for iAnnotation in range(nAnnotation):
 
 output_table_all = pd.concat(output_table_list, ignore_index=True)
 output_table_all.to_csv(os.path.join(analysis_path, 'all_volumes.csv'))
+
+
+
+## Go through each structure in volume table and summarize statistics per structure
+output_table_pername_list = list()
+for nameStruct in np.unique(np.array(output_table_all['name'].astype('category'))):
+
+    output_table_pername = output_table_all[output_table_all['name'] == nameStruct]
+    atlas_name = output_table_pername['atlas'].iloc[0]
+    controlMeanVolume = np.mean(np.array([float(output_table_pername[output_table_pername['subject'] == 'control1']['Volume']),
+                                          float(output_table_pername[output_table_pername['subject'] == 'control2']['Volume'])]))
+    patientVolume = float(output_table_pername[output_table_pername['subject'] == 'patient']['Volume'])
+    fractionDifferenceVolume = (patientVolume - controlMeanVolume) / controlMeanVolume
+
+    output_table_pername_list.append(pd.DataFrame({'name': [nameStruct],
+                                                  'atlas': [atlas_name],
+                                                  'fractionDifference': [fractionDifferenceVolume],
+                                                  'controlMeanVolume': [controlMeanVolume],
+                                                  'patientVolume': [patientVolume]}))
+
+output_table_pername = pd.concat(output_table_pername_list, ignore_index=True)
+output_table_pername = output_table_pername.sort_values(by='fractionDifference')
+output_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'))
+
+
+
+
+## Plotting
+# cmap = matplotlib.cm.get_cmap('lines')
+VOIs = ['substantia nigra pars reticula',
+        'substantia nigra pars compacta',
+        'nucleus accumbens',
+        'mask']
+for iVOI in range(len(VOIs)):
+    output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
+    ax = output_table_all_plot.plot.bar(x='subject',
+                                        y='Volume',
+                                        rot=0,
+                                        color=[[0.4, 0.4, 0.85],
+                                               [0.4, 0.4, 0.85],
+                                               [0.85, 0.4, 0.4]])
+    plt.ylabel('Volume $mm^3$')
+    plt.title(VOIs[iVOI])
+    ax.get_legend().remove()
+    plt.show()
+    plt.savefig(os.path.join(analysis_path,
+                             'volume_barplot_'+VOIs[iVOI]+'.png'))
