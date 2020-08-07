@@ -5,6 +5,8 @@ import numpy as np
 from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
 from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
+# from dipy.align.metrics import EMMetric
+# from dipy.align.metrics import SSDMetric
 import glob
 from pathlib import Path
 
@@ -12,6 +14,9 @@ from pathlib import Path
 
 # Define paths
 data_path = os.path.join('Data', 'Human', 'Processed')
+# processed_path = os.path.join('Data', 'Human', 'Processed_EMMetric')
+# processed_path = os.path.join('Data', 'Human', 'Processed_SSDMetric')
+Path(data_path).mkdir(exist_ok=True)
 reference_path = os.path.join('Data', 'Human', 'Reference')
 # annotation_path = os.path.join('atlases', 'Cerebellum', 'Talairach', 'Talairach-labels-1mm.nii.gz')
 annotation_path_list = [os.path.join(reference_path,
@@ -101,6 +106,8 @@ for iInputPath, InputPath in enumerate(input_path_list):
         input_flirted = input_flirted_image.get_fdata()
 
         # SyN
+        # metric = SSDMetric(3)
+        # metric = EMMetric(3)
         metric = CCMetric(3)
         level_iters = [10, 10, 5, 5, 5]
         sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)

@@ -9,6 +9,8 @@ from pathlib import Path
 # Define paths
 raw_path = os.path.join('Data', 'Human', 'Raw')
 processed_path = os.path.join('Data', 'Human', 'Processed')
+# processed_path = os.path.join('Data', 'Human', 'Processed_EMMetric')
+# processed_path = os.path.join('Data', 'Human', 'Processed_SSDMetric')
 raw_path_list = glob(os.path.join(raw_path, '*.nii'))
 
 for iRawPath, RawPath in enumerate(raw_path_list):
