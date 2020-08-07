@@ -23,6 +23,7 @@ def subjectPath2volumeTable(subject_path):
     subject = subject_image.get_fdata()
 
     # Get voxel volume
+    print(subject_image.header['pixdim'][1:4])
     voxel_volume = np.prod(subject_image.header['pixdim'][1:4]) # should be in mm^3
     print('voxel volume = '+str(voxel_volume)+'mm^3')
 
@@ -116,6 +117,7 @@ for nameStruct in np.unique(np.array(output_table_all['name'].astype('category')
 
 output_table_pername = pd.concat(output_table_pername_list, ignore_index=True)
 output_table_pername = output_table_pername.sort_values(by='fractionDifference')
+output_table_pername['relFracDiff'] = output_table_pername['fractionDifference']/float(output_table_pername[output_table_pername['name']=='mask']['fractionDifference'])
 output_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'))
 
 
