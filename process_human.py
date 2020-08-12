@@ -49,6 +49,8 @@ annotation_name_list = ['suit',
                         'CerebrA',
                         'mask']
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
+input_skull_path_list = glob.glob(os.path.join(data_path, '*', 'skull_reoriented.nii.gz'))
+input_path_list = list(set(input_path_list) - set(input_skull_path_list))
 
 # Define
 probability_threshold = 0.2 # Might be changed tp list the same length as number of annotations
@@ -71,6 +73,11 @@ for iInputPath, InputPath in enumerate(input_path_list):
     input_dirname = os.path.dirname(InputPath)
     input_name = os.path.basename(InputPath).split('_')[0]
     input_noext = os.path.join(input_dirname, input_name)
+
+    # image with skull path
+    input_skull_path = os.path.join(input_dirname, input_name+'_skull_reoriented.nii.gz')
+    input_skull_flirted_path = os.path.join(input_dirname, input_name+'_skull_reoriented.nii.gz')
+    print(input_skull_path)
 
     annotation_invsynned_invflirted_composite_path = input_noext+'_annotation_composite.nii.gz'
 
@@ -104,6 +111,16 @@ for iInputPath, InputPath in enumerate(input_path_list):
         template = template_image.get_fdata()
         input_flirted_image = nib.load(input_flirted_path)
         input_flirted = input_flirted_image.get_fdata()
+        if os.path.isfile(input_skull_flirted_path):
+            os.system('flirt -in ' + input_skull_path + ' \
+                             -ref ' + template_path + ' \
+                             -out ' + input_skull_flirted_path + ' \
+                             -init ' + input_flirt_path + ' \
+                             -verbose 1')
+            input_skull_flirted_image = nib.load(input_skull_flirted_path)
+            input_skull_flirted = input_skull_flirted_image.get_fdata()
+        else:
+            input_skull_flirted = input_flirted
 
         # SyN
         # metric = SSDMetric(3)
@@ -112,12 +129,11 @@ for iInputPath, InputPath in enumerate(input_path_list):
         level_iters = [10, 10, 5, 5, 5]
         sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
 
-        mapping = sdr.optimize(static=template, moving=input_flirted,
+        mapping = sdr.optimize(static=template, moving=input_skull_flirted,
                                static_grid2world=template_image.get_qform(), moving_grid2world=input_flirted_image.get_qform())
 
         input_flirted_synned = mapping.transform(input_flirted)
         input_flirted_synned_invsynned = mapping.transform_inverse(input_flirted_synned)
-        np.sum(input_flirted_synned_invsynned - input_flirted)
 
         # save the flirted and synned input, this is the input aligned to the reference elastically
         input_flirted_synned_image = nib.Nifti1Image(input_flirted_synned, np.eye(4))
