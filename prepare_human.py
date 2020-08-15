@@ -1,6 +1,9 @@
 # make sure qform is the same as sform
 # then use fslreorient2std and save archive to Processed
 
+# note that the manual cerebellar adjustment annotation as well as the orsuit annotation need to be downloaded/copied
+# manually to each subject folder, automatizing this is probably not worth it.
+
 import nibabel as nib
 from glob import glob
 import os

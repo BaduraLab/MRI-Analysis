@@ -49,7 +49,7 @@ annotation_name_list = ['suit',
                         'CerebrA',
                         'mask']
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
-input_skull_path_list = glob.glob(os.path.join(data_path, '*', 'skull_reoriented.nii.gz'))
+input_skull_path_list = glob.glob(os.path.join(data_path, '*', '*skull_reoriented.nii.gz'))
 input_path_list = list(set(input_path_list) - set(input_skull_path_list))
 
 # Define

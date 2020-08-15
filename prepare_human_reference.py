@@ -27,7 +27,7 @@ subcortical_annotation_path = os.path.join(subcortical_path,
                                            'prob_atlas_bilateral_thrarg_' + str(probability_threshold) + '.nii.gz')
 subcortical_maxprob_path = os.path.join(subcortical_path,
                                         'prob_atlas_bilateral_maxprob.nii.gz')
-subcortical_path_list = glob.glob(os.path.join(subcortical_path, '*volume*.nii.gz'))
+# subcortical_path_list = glob.glob(os.path.join(subcortical_path, '*volume*.nii.gz'))
 subcortical_subcortical_path_list_all = glob.glob(os.path.join(subcortical_path, '*.nii.gz'))
 
 CerebrA_path = os.path.join(reference_path, 'CerebrA')
