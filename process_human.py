@@ -22,28 +22,28 @@ reference_path = os.path.join('Data', 'Human', 'Reference')
 annotation_path_list = [os.path.join(reference_path,
                                      'atlases',
                                      'Cerebellum',
-                                     'Cerebellum-MNIfnirt-prob-1mm.nii.gz'),
+                                     'Cerebellum-MNIfnirt-prob-1mm_reoriented.nii.gz'),
                         os.path.join(reference_path,
                                      'subcortical',
-                                     'prob_atlas_bilateral.nii.gz'),
+                                     'prob_atlas_bilateral_reoriented.nii.gz'),
                         os.path.join(reference_path,
                                      'CerebrA',
-                                     'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii'),
+                                     'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz'),
                         os.path.join(reference_path,
                                      'CerebrA',
-                                     'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii')]
+                                     'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii.gz')]
 template_path_list = [os.path.join(reference_path,
                                    'standard',
-                                   'MNI152_T1_1mm_brain.nii.gz'),
+                                   'MNI152_T1_1mm_brain_reoriented.nii.gz'),
                       os.path.join(reference_path,
                                    'subcortical',
-                                   'CIT168_T1w_700um.nii.gz'),
+                                   'CIT168_T1w_700um_reoriented.nii.gz'),
                       os.path.join(reference_path,
                                    'CerebrA',
-                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii'),
+                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii.gz'),
                       os.path.join(reference_path,
                                    'CerebrA',
-                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii')]
+                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii.gz')]
 annotation_name_list = ['suit',
                         'subcortical',
                         'CerebrA',
@@ -111,7 +111,9 @@ for iInputPath, InputPath in enumerate(input_path_list):
         template = template_image.get_fdata()
         input_flirted_image = nib.load(input_flirted_path)
         input_flirted = input_flirted_image.get_fdata()
-        if os.path.isfile(input_skull_flirted_path):
+        # if os.path.isfile(input_skull_flirted_path):
+        if False: # skull processing off
+            print('with skull processing')
             os.system('flirt -in ' + input_skull_path + ' \
                              -ref ' + template_path + ' \
                              -out ' + input_skull_flirted_path + ' \
@@ -120,6 +122,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
             input_skull_flirted_image = nib.load(input_skull_flirted_path)
             input_skull_flirted = input_skull_flirted_image.get_fdata()
         else:
+            print('without skull processing')
             input_skull_flirted = input_flirted
 
         # SyN

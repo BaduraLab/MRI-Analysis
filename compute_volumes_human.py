@@ -47,7 +47,7 @@ reference_path = os.path.join('Data', 'Human', 'Reference')
 analysis_path = os.path.join('Data', 'Human', 'Analysis')
 input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*annotation_orsuit_thrarg_adjusted.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_subcortical_thrarg.nii.gz')),
-                        glob.glob(os.path.join(data_path, '*', '*annotation_CerebrA_thrarg.nii.gz')),
+                        glob.glob(os.path.join(data_path, '*', '*annotation_CerebrA_thrarg_adjusted.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_mask_thrarg.nii.gz'))]
 structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.txt'),
                        os.path.join(reference_path, 'subcortical', 'subcortical.csv'),
