@@ -15,7 +15,8 @@ reference_path_list = list(set(Path(reference_path).rglob('*.nii')) |
 suit_path = os.path.join(reference_path, 'suit', 'atlasesSUIT')
 suit_path_list = glob.glob(os.path.join(suit_path, '*.nii.gz'))+glob.glob(os.path.join(suit_path, '*.nii'))
 suit_path_list = list(set(suit_path_list) - set(glob.glob(os.path.join(suit_path, '*reoriented.nii.gz'))))
-suit_path_list = suit_path_list + [os.path.join(reference_path, 'standard', 'MNI152_T1_1mm.nii.gz')]
+suit_path_list = suit_path_list + [os.path.join(reference_path, 'standard', 'MNI152_T1_1mm_brain.nii.gz'),
+                                   os.path.join(reference_path, 'atlases', 'Cerebellum', 'Cerebellum-MNIfnirt-prob-1mm.nii.gz')]
 
 subcortical_path = os.path.join(reference_path, 'subcortical')
 subcortical_path_list = glob.glob(os.path.join(subcortical_path, '*.nii.gz'))

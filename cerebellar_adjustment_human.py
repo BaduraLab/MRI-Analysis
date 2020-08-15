@@ -2,9 +2,8 @@ import os
 import numpy as np
 import nibabel as nib
 import pandas as pd
-import matplotlib
-
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import glob
 import csv
@@ -105,6 +104,9 @@ for iPath in input_path_list_list[0]:
 for iPath in input_path_list_list[2]:
     print(iPath)
 
+    # Get subject name
+    subject_name = iPath.split(os.sep)[-2]
+
     # Get adjusted output path
     automatic_path = iPath.split('CerebrA')[0] + 'CerebrA_thrarg.nii.gz'
     manual_path = iPath.split('CerebrA')[0] + 'suitmask_thrarg_manual.nii.gz'
@@ -173,11 +175,14 @@ for iPath in input_path_list_list[2]:
         add_index = tuple(remove_points[iRemove, :])
         closest_annotated_index = tuple(not_remove_points[not_remove_tree.query(add_index)[1]])
         nearest_volumeInteger = adjusted[closest_annotated_index]
-        if nearest_volumeInteger == 0:
-            closest_annotated_index_exception = tuple(not_remove_exception_points[not_remove_exception_tree.query(add_index)[1]])
-            nearest_volumeInteger_exception = adjusted[closest_annotated_index_exception]
-            if nearest_volumeInteger_exception in [39, 90]:
-                adjusted[add_index] = nearest_volumeInteger_exception
+        if subject_name != 'control2':
+            if nearest_volumeInteger == 0:
+                closest_annotated_index_exception = tuple(not_remove_exception_points[not_remove_exception_tree.query(add_index)[1]])
+                nearest_volumeInteger_exception = adjusted[closest_annotated_index_exception]
+                if nearest_volumeInteger_exception in [39, 90]:
+                    adjusted[add_index] = nearest_volumeInteger_exception
+                else:
+                    adjusted[add_index] = nearest_volumeInteger
             else:
                 adjusted[add_index] = nearest_volumeInteger
         else:
@@ -185,6 +190,7 @@ for iPath in input_path_list_list[2]:
         # you could add an exception for cerebellar white matter where you search a second tree without zeros instead,
         # if this returns cerebellar white matter assign that volumeInteger instead of 0
         # (if zero, search nonzero tree, if cerebellar white matter assign respective integer, if not assign zero)
+        # update: exception causes cerebellar white matter annotation to be present clearly far away from cerebellum - turn off exception
 
     # Save adjusted image
     adjusted_image = nib.Nifti1Image(adjusted,
