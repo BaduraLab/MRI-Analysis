@@ -48,12 +48,20 @@ annotation_name_list = ['suit',
                         'subcortical',
                         'CerebrA',
                         'mask']
+# annotation_path_list = [os.path.join(reference_path,
+#                                      'subcortical',
+#                                      'prob_atlas_bilateral_reoriented.nii.gz')]
+# template_path_list = [os.path.join(reference_path,
+#                                    'subcortical',
+#                                    'CIT168_T1w_700um_reoriented.nii.gz')]
+# annotation_name_list = ['subcortical']
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 input_skull_path_list = glob.glob(os.path.join(data_path, '*', '*skull_reoriented.nii.gz'))
 input_path_list = list(set(input_path_list) - set(input_skull_path_list))
 
 # Define
-probability_threshold = 0.2 # Might be changed tp list the same length as number of annotations
+probability_threshold = [0.2, 0.4, np.nan, np.nan] # Might be changed to list the same length as number of annotations
+# probability_threshold = 0.5
 def saveImage(image_fdata, path, image_qform_template):
     image = nib.Nifti1Image(image_fdata, image_qform_template.affine, image_qform_template.header)
     image.set_qform(image_qform_template.affine, code=1)
@@ -209,7 +217,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
             annotation_invsynned_invflirted_maxprob = annotation_invsynned_invflirted_maxprob / \
                                                       np.max(annotation_invsynned_invflirted_maxprob)
             annotation_invsynned_invflirted_argprob = np.argmax(annotation_invsynned_invflirted_4D, axis=3)+1
-            annotation_invsynned_invflirted_thrprob = annotation_invsynned_invflirted_maxprob > probability_threshold
+            annotation_invsynned_invflirted_thrprob = annotation_invsynned_invflirted_maxprob > probability_threshold[iAnnotationPath]
             annotation_invsynned_invflirted = annotation_invsynned_invflirted_argprob \
                                             * annotation_invsynned_invflirted_thrprob
 
