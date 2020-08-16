@@ -29,6 +29,31 @@ CerebrA_path = os.path.join(reference_path, 'CerebrA')
 CerebrA_annotation_path = os.path.join(CerebrA_path, 'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz')
 CerebrA_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
 
+
+def imageAdjustNN(input, input_logical, correction, correction_logical):
+    # Grid for point generation
+    X, Y, Z = np.mgrid[0:input.shape[0]:1, 0:input.shape[1]:1, 0:input.shape[2]:1]
+
+    # Points
+    input_points = np.vstack((X[input_logical],
+                              Y[input_logical],
+                              Z[input_logical])).transpose()  # Get old automatic points
+    correction_points = np.vstack((X[correction_logical],
+                                   Y[correction_logical],
+                                   Z[correction_logical])).transpose()  # Get new manual points
+
+    # Correction tree
+    correction_tree = spatial.KDTree(correction_points)  # Get old automatic tree
+
+    # Go through input points and interpolate value to nearest correction value
+    for iInput in range(input_points.shape[0]):
+        add_index = tuple(input_points[iInput, :])
+        closest_annotated_index = tuple(correction_points[correction_tree.query(add_index)[1]])
+        input[add_index] = correction[closest_annotated_index]
+
+    return input
+
+
 # Follows
 nAnnotation = len(input_path_list_list)
 structure_table_list = [pd.read_csv(structure_path_list[0],
@@ -38,8 +63,6 @@ structure_table_list = [pd.read_csv(structure_path_list[0],
                                     names=['VolumeInteger', 'acronym', 'name']),
                         pd.read_csv(structure_path_list[2]),
                         pd.read_csv(structure_path_list[3])]
-
-
 
 # Adjust automatic orsuit with manual suit
 for iPath in input_path_list_list[0]:
@@ -98,8 +121,6 @@ for iPath in input_path_list_list[0]:
                                      automatic_image.header)
     nib.save(adjusted_image, adjusted_path)
 
-
-
 # Adjust automatic CerebrA with manual suit
 for iPath in input_path_list_list[2]:
     print(iPath)
@@ -111,6 +132,7 @@ for iPath in input_path_list_list[2]:
     automatic_path = iPath.split('CerebrA')[0] + 'CerebrA_thrarg.nii.gz'
     manual_path = iPath.split('CerebrA')[0] + 'suitmask_thrarg_manual.nii.gz'
     adjusted_path = iPath.split('CerebrA')[0] + 'CerebrA_thrarg_adjusted.nii.gz'
+    orsuit_path = iPath.split('CerebrA')[0] + 'orsuit_thrarg.nii.gz'
     print(adjusted_path)
 
     # Load image
@@ -120,6 +142,8 @@ for iPath in input_path_list_list[2]:
     manual_image = nib.load(manual_path)
     manual = manual_image.get_fdata()
     adjusted = automatic.copy()
+    orsuit_image = nib.load(orsuit_path)
+    orsuit = orsuit_image.get_fdata()
 
     # Grid for lowdetail and highdetail
     X, Y, Z = np.mgrid[0:automatic_image.shape[0]:1, 0:automatic_image.shape[1]:1, 0:automatic_image.shape[2]:1]
@@ -129,8 +153,18 @@ for iPath in input_path_list_list[2]:
     manual_logical = manual > 0
     add_logical = np.logical_and(np.logical_not(automatic_logical),
                                  manual_logical)  # no automatic annotation, but there is manual annotation - add
-    remove_logical = np.logical_and(np.logical_not(manual_logical),
-                                    automatic_logical)  # no manual annotation, but there is automatic annotation - remove
+    if subject_name != 'control2':
+        remove_logical = np.logical_and(np.logical_not(manual_logical),
+                                        automatic_logical)  # no manual annotation, but there is automatic annotation - remove
+    else:
+        remove_logical = np.logical_and(np.logical_not(manual_logical),
+                                        np.isin(adjusted, np.concatenate([CerebrA_cerebellum_volumeIntegers,
+                                                                          np.array([39,
+                                                                                    90])])))  # no manual annotation, but there is automatic annotation - remove
+        orsuit_specific_logical = np.isin(orsuit, [29, 30, 31, 32, 33, 34])
+        np.sum(automatic - automatic)
+        remove_logical = np.logical_and(remove_logical, np.logical_not(
+            orsuit_specific_logical))  # do not remove correct orsuit annotation
     # not_remove_logical = np.logical_not(remove_logical)
 
     # Points
@@ -154,16 +188,24 @@ for iPath in input_path_list_list[2]:
         adjusted[add_index] = automatic[closest_annotated_index]
 
     # not remove logical, points and tree
-    not_remove_logical = np.logical_not(np.isin(adjusted, CerebrA_cerebellum_volumeIntegers))
+    if subject_name != 'control2':
+        not_remove_logical = np.logical_not(np.isin(adjusted,
+                                                    CerebrA_cerebellum_volumeIntegers))
+    else:
+        not_remove_logical = np.logical_not(np.isin(adjusted,
+                                                    np.concatenate([CerebrA_cerebellum_volumeIntegers,
+                                                                    np.array([39, 90])])))
+        print('do not include cerebellar white matter in remove annotation interpolation')
     not_remove_points = np.vstack((X[not_remove_logical],
                                    Y[not_remove_logical],
                                    Z[not_remove_logical])).transpose()  # Get not remove points
     not_remove_tree = spatial.KDTree(not_remove_points)  # Get tree to fill in for removed values (should include 0s)
     not_remove_exception_logical = np.logical_and(not_remove_logical, np.logical_not(adjusted == 0))
     not_remove_exception_points = np.vstack((X[not_remove_exception_logical],
-                                   Y[not_remove_exception_logical],
-                                   Z[not_remove_exception_logical])).transpose()  # Get not remove expception points
-    not_remove_exception_tree = spatial.KDTree(not_remove_exception_points)  # Get tree to fill in for removed values (should include 0s)
+                                             Y[not_remove_exception_logical],
+                                            Z[not_remove_exception_logical])).transpose()  # Get not remove expception points
+    not_remove_exception_tree = spatial.KDTree(
+        not_remove_exception_points)  # Get tree to fill in for removed values (should include 0s)
 
     # # Remove points
     # adjusted[remove_logical] = 0  # If cerebellum white matter is annotated automatically as cerebellum gray matter
@@ -177,7 +219,8 @@ for iPath in input_path_list_list[2]:
         nearest_volumeInteger = adjusted[closest_annotated_index]
         if subject_name != 'control2':
             if nearest_volumeInteger == 0:
-                closest_annotated_index_exception = tuple(not_remove_exception_points[not_remove_exception_tree.query(add_index)[1]])
+                closest_annotated_index_exception = tuple(
+                    not_remove_exception_points[not_remove_exception_tree.query(add_index)[1]])
                 nearest_volumeInteger_exception = adjusted[closest_annotated_index_exception]
                 if nearest_volumeInteger_exception in [39, 90]:
                     adjusted[add_index] = nearest_volumeInteger_exception
@@ -191,6 +234,11 @@ for iPath in input_path_list_list[2]:
         # if this returns cerebellar white matter assign that volumeInteger instead of 0
         # (if zero, search nonzero tree, if cerebellar white matter assign respective integer, if not assign zero)
         # update: exception causes cerebellar white matter annotation to be present clearly far away from cerebellum - turn off exception
+
+    # Make sure that what is marked in orsuit as cerebellar white matter is also marked as cbw in adjusted
+    if subject_name == 'control2':
+        adjusted = imageAdjustNN(input=adjusted, input_logical=orsuit_specific_logical,
+                                 correction=adjusted, correction_logical=np.isin(adjusted, [39, 90]))
 
     # Save adjusted image
     adjusted_image = nib.Nifti1Image(adjusted,
