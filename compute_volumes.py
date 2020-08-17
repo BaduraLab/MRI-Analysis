@@ -81,7 +81,8 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     mouse_table['Genotype'] = subject.split('_')[0]
     mouse_table['Sex'] = subject.split('_')[-1]
     mouse_table.loc[mouse_table['Sex']!='female', 'Sex'] = 'male'
-    mouse_table = mouse_table[['Mouse', 'Genotype', 'Sex', 'name', 'acronym', 'VoxelNumber', 'Volume']]
+    mouse_table = mouse_table[['Mouse', 'Genotype', 'Sex', 'name', 'acronym', 'id_custom', 'structure_id_path_custom',
+                               'VoxelNumber', 'Volume']]
 
     mouse_table_list.append(mouse_table)
 
