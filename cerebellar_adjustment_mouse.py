@@ -11,7 +11,6 @@ from scipy.stats import ttest_ind
 from pathlib import Path
 import numpy_indexed as npi
 from scipy import spatial
-from functions import imageAdjustNN
 
 # Define paths
 data_path = os.path.join('Data', 'Human', 'Processed')
@@ -29,6 +28,31 @@ manual_path_list = glob.glob(os.path.join(data_path, '*', '*annotation_suitmask_
 CerebrA_path = os.path.join(reference_path, 'CerebrA')
 CerebrA_annotation_path = os.path.join(CerebrA_path, 'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz')
 CerebrA_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
+
+
+def imageAdjustNN(input, input_logical, correction, correction_logical):
+    # Grid for point generation
+    X, Y, Z = np.mgrid[0:input.shape[0]:1, 0:input.shape[1]:1, 0:input.shape[2]:1]
+
+    # Points
+    input_points = np.vstack((X[input_logical],
+                              Y[input_logical],
+                              Z[input_logical])).transpose()  # Get old automatic points
+    correction_points = np.vstack((X[correction_logical],
+                                   Y[correction_logical],
+                                   Z[correction_logical])).transpose()  # Get new manual points
+
+    # Correction tree
+    correction_tree = spatial.KDTree(correction_points)  # Get old automatic tree
+
+    # Go through input points and interpolate value to nearest correction value
+    for iInput in range(input_points.shape[0]):
+        add_index = tuple(input_points[iInput, :])
+        closest_annotated_index = tuple(correction_points[correction_tree.query(add_index)[1]])
+        input[add_index] = correction[closest_annotated_index]
+
+    return input
+
 
 # Follows
 nAnnotation = len(input_path_list_list)

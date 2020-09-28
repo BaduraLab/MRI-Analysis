@@ -3,13 +3,15 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import glob
 import csv
 from scipy.stats import ttest_ind
 from pathlib import Path
 import numpy_indexed as npi
+from functions import remap_3D
+from functions import save_image
 
 
 
@@ -59,8 +61,9 @@ def image2volumetable(image_path, voxel_volume):
 data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 analysis_path = os.path.join('Data', 'Mouse', 'Analysis')
-mouse_path_list = glob.glob(os.path.join(data_path, '*', '*invsynned*cerebellum.nii.gz'))
+mouse_path_list = glob.glob(os.path.join(data_path, '*', '*invsynned*cerebellum_lobular.nii.gz'))
 reference_structure_path = os.path.join(reference_path, 'structure_graph_remapped_lowdetail.csv')
+voxel_reference_volume = 0.000125
 voxel_volume = 0.000125
 annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 
@@ -71,9 +74,24 @@ Path(os.path.join(analysis_path, 'perstructure')).mkdir(parents=True, exist_ok=T
 
 
 
+# Reference volumes
+reference_table = image2volumetable(annotation_path, voxel_reference_volume)
+reference_table.to_csv(os.path.join(analysis_path, 'reference_volumes.csv'))
+
+reference_table['in_cerebellum'] = False
+for iVolume in range(reference_table.shape[0]):
+    if isinstance(reference_table.loc[iVolume, 'structure_id_path'], str):
+        reference_table.loc[iVolume, 'in_cerebellum'] = 512 in list(map(int, reference_table.loc[iVolume, 'structure_id_path'].strip('][').split(', ')))
+reference_cerebellum_table = reference_table[reference_table['in_cerebellum']][['name', 'acronym', 'id', 'structure_id_path', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
+reference_cerebellum_table.to_csv(os.path.join(analysis_path, 'reference_volumes_cerebellum.csv'))
+
+
+
 mouse_table_list = list()
 for iMouse, Mouse in enumerate(mouse_path_list):
     subject = Mouse.split(os.path.sep)[-2]
+    print(Mouse)
+    print(subject)
     mouse_table = image2volumetable(Mouse, voxel_volume)
     mouse_table.to_csv(os.path.join(analysis_path, subject+'_volumes.csv'))
 
@@ -87,8 +105,21 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     mouse_table_list.append(mouse_table)
 
 mouse_table_all = pd.concat(mouse_table_list, ignore_index=True)
-mouse_table_all.to_csv(os.path.join(analysis_path, 'all_volumes.csv'))
 
+reference_table['rVolume'] = reference_table['Volume']
+output_table_all = pd.merge(left=mouse_table_all,
+                            right=reference_table.loc[:, ['id_custom', 'name', 'rVolume']],
+                            left_on=['id_custom', 'name'],
+                            right_on=['id_custom', 'name'])
+output_table_all['VolumeNormalized'] = output_table_all['Volume']/output_table_all['rVolume']
+
+output_table_all.to_csv(os.path.join(analysis_path, 'all_volumes.csv'))
+
+output_table_cerebellum = pd.merge(left=output_table_all, right=reference_table[['id_custom', 'in_cerebellum']],
+         left_on='id_custom', right_on='id_custom')
+output_table_cerebellum = output_table_cerebellum[output_table_cerebellum['in_cerebellum']]
+output_table_cerebellum = output_table_cerebellum.drop('in_cerebellum', 1)
+output_table_cerebellum.to_csv(os.path.join(analysis_path, 'cerebellum_volumes.csv'))
 
 
 # In volume table, go through each structure and determine the p-value between genotypes, create a new p-value table
@@ -119,37 +150,95 @@ mouse_table_pername = pd.merge(left=mouse_table_pername, right=structure.loc[:, 
                                left_on='name', right_on='name')
 mouse_table_pername['pVal_inv'] = np.abs(np.log10(mouse_table_pername['pVal']))
 
-# Create reference image with p-values in the image instead of structure integers
+# Save separate pval table with only cerebellum
+pername_table_cerebellum = pd.merge(left=mouse_table_pername, right=reference_table[['id_custom', 'in_cerebellum']],
+         left_on='id_custom', right_on='id_custom')
+pername_table_cerebellum = pername_table_cerebellum[pername_table_cerebellum['in_cerebellum']]
+pername_table_cerebellum = pername_table_cerebellum.drop('in_cerebellum', 1)
+pername_table_cerebellum.to_csv(os.path.join(analysis_path, 'pername_cerebellum_volumes.csv'))
+
+
+
+# Create reference images with p-values in the image instead of structure integers
+mean_diff = mouse_table_pername['KO_mean'] - mouse_table_pername['WT_mean']
+map_from = np.array(mouse_table_pername['id_custom'])
 annotation_image = nib.load(annotation_path)
 annotation = annotation_image.get_fdata()
-annotation_shape = annotation.shape
-annotation = annotation.reshape(-1)
-annotation = npi.remap(annotation, list(mouse_table_pername['id_custom']), list(mouse_table_pername['pVal']))
-annotation = annotation.reshape(annotation_shape)
-annotation_pVal_image = nib.Nifti1Image(annotation, np.eye(4))
-annotation_pVal_image.set_qform(annotation_image.get_qform(), code=1)
-annotation_pVal_image.set_sform(np.eye(4), code=0)
-annotation_pVal_path = annotation_path.split(os.sep)[-1].split('.')[0]
-annotation_pVal_path = annotation_pVal_path + '_pVal' + '.nii.gz'
-annotation_pVal_path = os.path.join(analysis_path, annotation_pVal_path)
-nib.save(annotation_pVal_image, annotation_pVal_path)
+for i in range(12):
 
-# Create reference image with inverted p-values in the image instead of structure integers
-annotation_image = nib.load(annotation_path)
-annotation = annotation_image.get_fdata()
-annotation_shape = annotation.shape
-annotation = annotation.reshape(-1)
-annotation = npi.remap(annotation, list(mouse_table_pername['id_custom']), list(mouse_table_pername['pVal_inv']))
-annotation = annotation.reshape(annotation_shape)
-annotation_pVal_image = nib.Nifti1Image(annotation, np.eye(4))
-annotation_pVal_image.set_qform(annotation_image.get_qform(), code=1)
-annotation_pVal_image.set_sform(np.eye(4), code=0)
-annotation_pVal_path = annotation_path.split(os.sep)[-1].split('.')[0]
-annotation_pVal_path = annotation_pVal_path + '_pVal_inv' + '.nii.gz'
-annotation_pVal_path = os.path.join(analysis_path, annotation_pVal_path)
-nib.save(annotation_pVal_image, annotation_pVal_path)
+    annotation_pVal_path = os.path.join(analysis_path, annotation_path.split(os.sep)[-1].split('.')[0])
+    if i == 0:
+        map_to = np.array(mouse_table_pername['pVal'])
+        annotation_pVal_path = annotation_pVal_path + '_pVal' + '.nii.gz'
+    elif i == 1:
+        map_to = np.array(mouse_table_pername['pVal_inv'])
+        annotation_pVal_path = annotation_pVal_path + '_pVal_inv' + '.nii.gz'
+    elif i == 2:
+        map_to = np.array(mouse_table_pername['pVal']*(mouse_table_pername['pVal'] < 0.05))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_sig' + '.nii.gz'
+    elif i == 3:
+        map_to = np.array(mouse_table_pername['pVal_inv']*(mouse_table_pername['pVal'] < 0.05))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_inv_sig' + '.nii.gz'
+    elif i == 4:
+        map_to = np.array(mouse_table_pername['pVal']*(mean_diff > 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_volIncrease' + '.nii.gz'
+    elif i == 5:
+        map_to = np.array(mouse_table_pername['pVal']*(mean_diff < 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_volDecrease' + '.nii.gz'
+    elif i == 6:
+        map_to = np.array(mouse_table_pername['pVal_inv']*(mean_diff > 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_inv_volIncrease' + '.nii.gz'
+    elif i == 7:
+        map_to = np.array(mouse_table_pername['pVal_inv']*(mean_diff < 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_inv_volDecrease' + '.nii.gz'
+    elif i == 8:
+        map_to = np.array(mouse_table_pername['pVal']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff > 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_sig_volIncrease' + '.nii.gz'
+    elif i == 9:
+        map_to = np.array(mouse_table_pername['pVal']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff < 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_sig_volDecrease' + '.nii.gz'
+    elif i == 10:
+        map_to = np.array(mouse_table_pername['pVal_inv']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff > 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_inv_sig_volIncrease' + '.nii.gz'
+    elif i == 11:
+        map_to = np.array(mouse_table_pername['pVal_inv']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff < 0))
+        annotation_pVal_path = annotation_pVal_path + '_pVal_inv_sig_volDecrease' + '.nii.gz'
+
+    map_to_filt = np.logical_not(np.isnan(map_to))
+    map_to_filtered = map_to[map_to_filt]
+    map_from_filtered = map_from[map_to_filt]
+
+    annotation_remapped = np.round(annotation) # always annotation so should never be non-integer
+    # input = input.astype(int) # always annotation so should never be non-integer
+    annotation_remapped_shape = annotation_remapped.shape
+    annotation_remapped = annotation_remapped.reshape(-1)
+    annotation_remapped = npi.remap(annotation_remapped, map_from_filtered, map_to_filtered)
+    annotation_remapped = annotation_remapped.reshape(annotation_remapped_shape)
+    # annotation_remapped = remap_3D(annotation, map_from_filtered.astype(int), map_to_filtered)
+
+    output_image = nib.Nifti1Image(annotation_remapped,
+                                   annotation_image.affine)
+    nib.save(output_image, annotation_pVal_path)
 
 
+
+## Plotting
+# cmap = matplotlib.cm.get_cmap('lines')
+VOIs = ['Substantia nigra, compact part',
+        'Substantia nigra, reticular part',
+        'Lobule II',
+        'cerebal peduncle',
+        'root']
+for iVOI in range(len(VOIs)):
+    ax = output_table_all[output_table_all['name'] == VOIs[iVOI]][['VolumeNormalized', 'Genotype']].boxplot(by=['Genotype'])
+
+    plt.ylabel('Volume Normalized')
+    plt.xlabel('Genotype')
+    plt.title(VOIs[iVOI] + ' volumes')
+    plt.suptitle('') # that's what you're after
+    # ax.set_xticklabels(['WT', 'KO'])
+    # plt.show()
+    plt.savefig(os.path.join(analysis_path, 'Boxplot_'+VOIs[iVOI]+'_ByGenotype'))
 
 
 
@@ -336,3 +425,4 @@ nib.save(annotation_pVal_image, annotation_pVal_path)
 # # for i in range(100):
 # #     print(i)
 # #     print(np.any(pd.DataFrame(oapi.get_structures(i+1))['id']==182305696))
+

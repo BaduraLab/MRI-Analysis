@@ -10,63 +10,78 @@ import csv
 from scipy.stats import ttest_ind
 from pathlib import Path
 import numpy_indexed as npi
+from functions import subjectPath2volumeTable
 
 
-
-## Define
-# Function to compute volumes for image
-def subjectPath2volumeTable(subject_path):
-    # Compute voxel numbers and volumes and output to table
-
-    # Load image
-    subject_image = nib.load(subject_path)
-    subject = subject_image.get_fdata()
-
-    # Get voxel volume
-    print(subject_image.header['pixdim'][1:4])
-    voxel_volume = np.prod(subject_image.header['pixdim'][1:4]) # should be in mm^3
-    print('voxel volume = '+str(voxel_volume)+'mm^3')
-
-    # Calculate volumes
-    [iVoxel, nVoxel] = np.unique(np.int64(np.round(subject)),
-                                 return_counts=True)
-    vVoxel = nVoxel * voxel_volume
-    print('total volume = '+str(np.sum(vVoxel))+'mm^3')
-
-    # Output to DataFrame
-    volume_table = pd.DataFrame(
-        {'VolumeInteger': iVoxel,
-         'VoxelNumber': nVoxel,
-         'Volume': vVoxel})
-
-    return volume_table
 
 # Define paths
 data_path = os.path.join('Data', 'Human', 'Processed')
 reference_path = os.path.join('Data', 'Human', 'Reference')
 analysis_path = os.path.join('Data', 'Human', 'Analysis')
-input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*annotation_orsuit_thrarg_adjusted.nii.gz')),
+input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*annotation_orsuit_thrarg_adjusted_lobular.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_subcortical_thrarg.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_CerebrA_thrarg_adjusted.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_mask_thrarg.nii.gz'))]
-structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.txt'),
+annotation_path_list = [os.path.join(reference_path,
+                                     'suit',
+                                     'atlasesSUIT',
+                                     'Lobules-SUIT.nii'),
+                        os.path.join(reference_path,
+                                     'subcortical',
+                                     'prob_atlas_bilateral_thrarg_0.4.nii.gz'),
+                        os.path.join(reference_path,
+                                     'CerebrA',
+                                     'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz'),
+                        os.path.join(reference_path,
+                                     'CerebrA',
+                                     'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii.gz')]
+structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.csv'),
                        os.path.join(reference_path, 'subcortical', 'subcortical.csv'),
                        os.path.join(reference_path, 'CerebrA', 'CerebrA.csv'),
                        os.path.join(reference_path, 'CerebrA', 'mask.csv')]
 
 # Follows
 nAnnotation = len(input_path_list_list)
-structure_table_list = [pd.read_csv(structure_path_list[0],
-                                    delim_whitespace=True,
-                                    names=['VolumeInteger', 'name', 'ID']),
-                        pd.read_csv(structure_path_list[1],
-                                    names=['VolumeInteger', 'acronym', 'name']),
+structure_table_list = [pd.read_csv(structure_path_list[0]),
+                        pd.read_csv(structure_path_list[1]),
                         pd.read_csv(structure_path_list[2]),
                         pd.read_csv(structure_path_list[3])]
 
 
 
-## Calculate volumes for all atlases and input files
+## Calculate volumes for all atlas files
+output_table_list = list()
+for iAnnotation in range(nAnnotation):
+    annotation_path = annotation_path_list[iAnnotation]
+    structure_table = structure_table_list[iAnnotation]
+    structure_name = os.path.splitext(os.path.basename(structure_path_list[iAnnotation]))[0]
+
+    print(annotation_path)
+
+    # Compute volumes
+    output_table = subjectPath2volumeTable(annotation_path)
+
+    # Add structure names to output table by using common volume integers
+    output_table = pd.merge(left=output_table,
+                            right=structure_table_list[iAnnotation].loc[:, ['VolumeInteger', 'name']],
+                            left_on='VolumeInteger',
+                            right_on='VolumeInteger')
+
+    # Add metadata
+    output_table['atlas'] = structure_name
+
+    # Add table to table list
+    output_table_list.append(output_table)
+
+output_table_all = pd.concat(output_table_list, ignore_index=True)
+output_table_all.to_csv(os.path.join(analysis_path, 'reference_volumes.csv'))
+reference_table = output_table_all.copy()
+reference_cerebellum_table = reference_table[reference_table['atlas'] == 'Lobules-SUIT']
+reference_cerebellum_table.to_csv(os.path.join(analysis_path, 'reference_cerebellum_volumes.csv'))
+# reference_table[reference_table['']=='']
+
+
+## Calculate volumes for all input files
 output_table_list = list()
 for iAnnotation in range(nAnnotation):
     input_path_list = input_path_list_list[iAnnotation]
@@ -94,7 +109,17 @@ for iAnnotation in range(nAnnotation):
         output_table_list.append(output_table)
 
 output_table_all = pd.concat(output_table_list, ignore_index=True)
+
+reference_table['rVolume'] = reference_table['Volume']
+output_table_all = pd.merge(left=output_table_all,
+                            right=reference_table.loc[:, ['atlas', 'VolumeInteger', 'name', 'rVolume']],
+                            left_on=['atlas', 'VolumeInteger', 'name'],
+                            right_on=['atlas', 'VolumeInteger', 'name'])
+output_table_all['VolumeNormalized'] = output_table_all['Volume']/output_table_all['rVolume']
+
 output_table_all.to_csv(os.path.join(analysis_path, 'all_volumes.csv'))
+output_table_cerebellum = output_table_all[output_table_all['atlas'] == 'Lobules-SUIT']
+output_table_cerebellum.to_csv(os.path.join(analysis_path, 'cerebellum_volumes.csv'))
 
 
 
@@ -104,9 +129,9 @@ for nameStruct in np.unique(np.array(output_table_all['name'].astype('category')
 
     output_table_pername = output_table_all[output_table_all['name'] == nameStruct]
     atlas_name = output_table_pername['atlas'].iloc[0]
-    controlMeanVolume = np.mean(np.array([float(output_table_pername[output_table_pername['subject'] == 'control1']['Volume']),
-                                          float(output_table_pername[output_table_pername['subject'] == 'control2']['Volume'])]))
-    patientVolume = float(output_table_pername[output_table_pername['subject'] == 'patient']['Volume'])
+    controlMeanVolume = np.mean(np.array([float(output_table_pername[output_table_pername['subject'] == 'control1']['VolumeNormalized']),
+                                          float(output_table_pername[output_table_pername['subject'] == 'control2']['VolumeNormalized'])]))
+    patientVolume = float(output_table_pername[output_table_pername['subject'] == 'patient']['VolumeNormalized'])
     fractionDifferenceVolume = (patientVolume - controlMeanVolume) / controlMeanVolume
 
     output_table_pername_list.append(pd.DataFrame({'name': [nameStruct],
@@ -119,6 +144,8 @@ output_table_pername = pd.concat(output_table_pername_list, ignore_index=True)
 output_table_pername = output_table_pername.sort_values(by='fractionDifference')
 output_table_pername['relFracDiff'] = output_table_pername['fractionDifference']/float(output_table_pername[output_table_pername['name']=='mask']['fractionDifference'])
 output_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'))
+output_table_pername_cerebellum = output_table_pername[output_table_pername['atlas'] == 'Lobules-SUIT']
+output_table_pername_cerebellum.to_csv(os.path.join(analysis_path, 'pername_cerebellum_volumes.csv'))
 
 
 
@@ -128,16 +155,22 @@ output_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'
 VOIs = ['substantia nigra pars reticula',
         'substantia nigra pars compacta',
         'nucleus accumbens',
-        'mask']
+        'mask',
+        'Right_VIIb',
+        'Left_VIIb',
+        'Right_VIIIa',
+        'Right_VIIIb',
+        'Left_VIIIa',
+        'Left_VIIIb']
 for iVOI in range(len(VOIs)):
     output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
     ax = output_table_all_plot.plot.bar(x='subject',
-                                        y='Volume',
+                                        y='VolumeNormalized',
                                         rot=0,
                                         color=[[0.4, 0.4, 0.85],
                                                [0.4, 0.4, 0.85],
                                                [0.85, 0.4, 0.4]])
-    plt.ylabel('Volume $mm^3$')
+    plt.ylabel('Volume Normalized')
     plt.title(VOIs[iVOI])
     ax.get_legend().remove()
     plt.show()
