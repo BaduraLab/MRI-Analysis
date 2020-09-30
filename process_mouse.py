@@ -14,6 +14,7 @@ from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
 import datetime
 import SimpleITK as sitk
+import pickle
 
 # Define
 data_path = os.path.join('Data', 'Mouse', 'Processed')
@@ -37,6 +38,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_translated_path = os.path.join(MousePath, mouse_string + '_translated.nii.gz')
     mouse_masked_flirted_path = os.path.join(MousePath, mouse_string + '_flirted.nii.gz')
     mouse_masked_flirt_path = os.path.join(MousePath, mouse_string + '_flirt.mat')
+    mouse_masked_syn_path = os.path.join(MousePath, mouse_string + '_syn')
     mouse_masked_invflirt_path = os.path.join(MousePath, mouse_string + '_invflirt.mat')
     mouse_masked_flirted_synned_path = os.path.join(MousePath, mouse_string + '_flirted_synned.nii.gz')
     reference_annotation_invsynned_path = os.path.join(MousePath, mouse_string + '_annotation_flirted.nii.gz')
@@ -75,6 +77,11 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
                            moving=mouse_masked_flirted,
                            static_grid2world=reference_template_image.get_qform(),
                            moving_grid2world=mouse_masked_flirted_image.get_qform())
+    with open(mouse_masked_syn_path, 'wb') as f:
+        pickle.dump([mapping, metric, level_iters, sdr], f)
+    # with open(mouse_masked_syn_path, 'rb') as f:
+    #     [mapping, metric, level_iters, sdr] = pickle.load(f)
+
 
     mouse_masked_flirted_synned = mapping.transform(mouse_masked_flirted)
     mouse_masked_flirted_synned_image = nib.Nifti1Image(mouse_masked_flirted_synned,

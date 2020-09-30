@@ -39,6 +39,7 @@ structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobu
                        os.path.join(reference_path, 'subcortical', 'subcortical.csv'),
                        os.path.join(reference_path, 'CerebrA', 'CerebrA.csv'),
                        os.path.join(reference_path, 'CerebrA', 'mask.csv')]
+structure_name_list = ['Lobules-SUIT', 'subcortical', 'CerebrA', 'mask']
 
 # Follows
 nAnnotation = len(input_path_list_list)
@@ -134,8 +135,11 @@ for nameStruct in np.unique(np.array(output_table_all['name'].astype('category')
     patientVolume = float(output_table_pername[output_table_pername['subject'] == 'patient']['VolumeNormalized'])
     fractionDifferenceVolume = (patientVolume - controlMeanVolume) / controlMeanVolume
 
+    VolumeInteger_val = np.array(output_table_pername['VolumeInteger'])[0]
+
     output_table_pername_list.append(pd.DataFrame({'name': [nameStruct],
                                                   'atlas': [atlas_name],
+                                                   'VolumeInteger': [VolumeInteger_val],
                                                   'fractionDifference': [fractionDifferenceVolume],
                                                   'controlMeanVolume': [controlMeanVolume],
                                                   'patientVolume': [patientVolume]}))
@@ -146,6 +150,47 @@ output_table_pername['relFracDiff'] = output_table_pername['fractionDifference']
 output_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes.csv'))
 output_table_pername_cerebellum = output_table_pername[output_table_pername['atlas'] == 'Lobules-SUIT']
 output_table_pername_cerebellum.to_csv(os.path.join(analysis_path, 'pername_cerebellum_volumes.csv'))
+
+
+
+# Create 3 images based on pername for each atlas: 1) Map by abs relFracDiff 2) Same but increased (relFracDiff>0) 3) Same but decreased (relFracDiff<0)
+for iAnnotation in range(nAnnotation):
+    print(iAnnotation)
+    annotation_path = annotation_path_list[iAnnotation]
+    annotation_image = nib.load(annotation_path)
+    annotation = annotation_image.get_fdata()
+    structure_table = structure_table_list[iAnnotation]
+    structure_name = structure_name_list[iAnnotation]
+    output_table_pername_peratlas = output_table_pername[output_table_pername['atlas'] == structure_name]
+
+    map_from = np.array(output_table_pername_peratlas['VolumeInteger'])
+
+    for i in range(3):
+        print(i)
+
+        annotation_aFD_path = os.path.join(analysis_path, annotation_path.split(os.sep)[-1].split('.')[0])
+        if i == 0:
+            map_to = np.abs(np.array(output_table_pername_peratlas['fractionDifference']))
+            annotation_aFD_path = annotation_aFD_path + '_aFD' + '.nii.gz'
+        elif i == 1:
+            map_to = np.abs(np.array(output_table_pername_peratlas['fractionDifference']))*(np.array(output_table_pername_peratlas['fractionDifference']) > 0)
+            annotation_aFD_path = annotation_aFD_path + '_aFD_volIncrease' + '.nii.gz'
+        elif i == 2:
+            map_to = np.abs(np.array(output_table_pername_peratlas['fractionDifference']))*(np.array(output_table_pername_peratlas['fractionDifference']) < 0)
+            annotation_aFD_path = annotation_aFD_path + '_aFD_volDecrease' + '.nii.gz'
+
+        annotation_remapped = np.round(annotation) # always annotation so should never be non-integer
+        # input = input.astype(int) # always annotation so should never be non-integer
+        annotation_remapped_shape = annotation_remapped.shape
+        annotation_remapped = annotation_remapped.reshape(-1)
+        annotation_remapped = npi.remap(annotation_remapped, map_from, map_to)
+        annotation_remapped = annotation_remapped.reshape(annotation_remapped_shape)
+        # annotation_remapped = remap_3D(annotation, map_from_filtered.astype(int), map_to_filtered)
+
+        output_image = nib.Nifti1Image(annotation_remapped,
+                                       annotation_image.affine)
+        nib.save(output_image, annotation_aFD_path)
+
 
 
 
