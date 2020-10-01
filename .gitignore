@@ -11,3 +11,4 @@ Data/
 venv/
 _pycache_/
 __pycache__/
+/dipy_example

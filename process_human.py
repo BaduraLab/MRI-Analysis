@@ -100,7 +100,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
 
         input_flirted_path = input_noext+'_flirted_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         input_flirt_path = input_noext+'_flirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
-        input_syn_path = input_noext+'_syn_'+template_name+'_'+str(iAnnotationPath)+'.p'
+        input_flirted_syn_path = input_noext+'_flirted_syn_'+template_name+'_'+str(iAnnotationPath)+'.p'
         input_invflirt_path = input_noext+'_invflirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
         input_flirted_synned_path = input_noext+'_flirted_synned_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         annotation_name = annotation_name_list[iAnnotationPath]
@@ -146,7 +146,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
                                moving=input_skull_flirted,
                                static_grid2world=template_image.get_qform(),
                                moving_grid2world=input_flirted_image.get_qform())
-        with open(input_syn_path, 'wb') as f:
+        with open(input_flirted_syn_path, 'wb') as f:
             pickle.dump([mapping, metric, level_iters, sdr], f)
 
         input_flirted_synned = mapping.transform(input_flirted)
