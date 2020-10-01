@@ -1,15 +1,20 @@
+% addpath('C:\Program Files\MATLAB\R2020a\toolbox\spm12')
+% spm fmri
+
 % define
 data_path = 'C:\Users\Enzon\Documents\Projects\MEP\mep-scripts\Data\';
 t1_path = {[data_path, 'Human\Processed\patient\patient_reoriented.nii'], ...
+    [data_path, 'Human\Processed\control1\control1_reoriented.nii'], ...
     [data_path, 'Human\Processed\control2\control2_reoriented.nii'], ...
-    [data_path, 'Human\Processed\control1\control1_reoriented.nii']};
+    [data_path, 'Human\Processed\control3\control3_reoriented.nii']};
+% t1_path = {[data_path, 'Human\Processed\control3\control3_reoriented.nii']};
 
 % follows
 nT1 = length(t1_path);
 
 % cerebellar isolation
 for iT1 = 1:nT1
-    suit_isolate_seg(t1_path(iT1), 'keeptempfiles', 1)
+    suit_isolate_seg(t1_path(iT1), 'keeptempfiles', 0)
 end
 
 % 

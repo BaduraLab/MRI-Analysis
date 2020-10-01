@@ -30,3 +30,5 @@ for iRawPath, RawPath in enumerate(raw_path_list):
     processed_image.set_qform(processed_image.affine, code=1)
     processed_image.set_sform(processed_image.affine, code=0)
     nib.save(processed_image, ProcessedPath)
+    if 'skull' not in ProcessedPath:
+        nib.save(processed_image, ProcessedPath.split('.')[0]+'.nii')

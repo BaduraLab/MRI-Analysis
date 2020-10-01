@@ -94,3 +94,10 @@ def subjectPath2volumeTable(subject_path):
          'Volume': vVoxel})
 
     return volume_table
+
+# Function to compute volumes for image
+def posField2vecField(posField, affine):
+    print('lala')
+
+    vecField = 1
+    return vecField

@@ -99,6 +99,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
 
         input_flirted_path = input_noext+'_flirted_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         input_flirt_path = input_noext+'_flirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
+        input_syn_path = input_noext+'_syn_'+template_name+'_'+str(iAnnotationPath)+'.p'
         input_invflirt_path = input_noext+'_invflirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
         input_flirted_synned_path = input_noext+'_flirted_synned_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         annotation_name = annotation_name_list[iAnnotationPath]
@@ -140,8 +141,12 @@ for iInputPath, InputPath in enumerate(input_path_list):
         level_iters = [10, 10, 5, 5, 5]
         sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
 
-        mapping = sdr.optimize(static=template, moving=input_skull_flirted,
-                               static_grid2world=template_image.get_qform(), moving_grid2world=input_flirted_image.get_qform())
+        mapping = sdr.optimize(static=template,
+                               moving=input_skull_flirted,
+                               static_grid2world=template_image.get_qform(),
+                               moving_grid2world=input_flirted_image.get_qform())
+        with open(input_syn_path, 'wb') as f:
+            pickle.dump([mapping, metric, level_iters, sdr], f)
 
         input_flirted_synned = mapping.transform(input_flirted)
         input_flirted_synned_invsynned = mapping.transform_inverse(input_flirted_synned)
@@ -224,7 +229,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
             saveImage(image_fdata=annotation_invsynned_invflirted_maxprob,
                       path=annotation_invsynned_invflirted_maxprob_path,
                       image_qform_template=annotation_invsynned_invflirted_image)
-            saveImage(image_fdata=annotation_invsynned_invflirted_thrprob.astype('float64'),
+            saveImage(image_fdata=annotation_invsynned_invflirted_thrprob.astype(int),
                       path=annotation_invsynned_invflirted_maxprob_path.split('.')[0]+'_thresholded.nii.gz',
                       image_qform_template=annotation_invsynned_invflirted_image)
             saveImage(image_fdata=annotation_invsynned_invflirted.astype(np.int16),
