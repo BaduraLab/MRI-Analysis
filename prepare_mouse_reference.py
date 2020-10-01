@@ -4,6 +4,7 @@ import nibabel as nib
 from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
 from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
+import pickle
 
 
 
@@ -14,6 +15,7 @@ allen_structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
 allen_template_flirted_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
 allen_template_flirt_path = os.path.join(reference_path, 'average_template_25_reoriented_flirt.mat')
 allen_template_flirted_synned_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_synned.nii.gz')
+allen_template_flirted_syn_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn.p')
 allen_annotation_flirted_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
 allen_annotation_flirted_synned_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
 AMBMC_template_path = os.path.join(reference_path, 'AMBMC_model.nii.gz')
@@ -76,6 +78,8 @@ mapping = sdr.optimize(static=AMBMC_template,
                        moving=allen_template_flirted,
                        static_grid2world=AMBMC_template_image.get_qform(),
                        moving_grid2world=allen_template_flirted_image.get_qform())
+with open(allen_template_flirted_syn_path, 'wb') as f:
+    pickle.dump([mapping, metric, level_iters, sdr], f)
 
 allen_template_flirted_synned = mapping.transform(allen_template_flirted)
 mouse_masked_flirted_synned_image = nib.Nifti1Image(allen_template_flirted_synned,

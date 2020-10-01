@@ -9,6 +9,7 @@ from dipy.align.metrics import CCMetric
 # from dipy.align.metrics import SSDMetric
 import glob
 from pathlib import Path
+import pickle
 
 
 
