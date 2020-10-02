@@ -45,7 +45,7 @@ for Path in [AMBMC_template_path] + AMBMC_annotation_path_list:
 
     output_path = Path.split('.')[0]+'_reoriented.nii.gz'
     nib.save(output_image, Path.split('.')[0]+'_reoriented.nii.gz')
-    AMBMC_path_list.append(Path)
+    AMBMC_path_list.append(output_path)
 AMBMC_template_path = AMBMC_path_list[0]
 
 
@@ -79,7 +79,9 @@ mapping = sdr.optimize(static=AMBMC_template,
                        static_grid2world=AMBMC_template_image.get_qform(),
                        moving_grid2world=allen_template_flirted_image.get_qform())
 with open(allen_template_flirted_syn_path, 'wb') as f:
-    pickle.dump([mapping, metric, level_iters, sdr], f)
+    pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
+# with open(allen_template_flirted_syn_path, 'rb') as f:
+#     [mapping, metric, level_iters, sdr] = pickle.load(f)
 
 allen_template_flirted_synned = mapping.transform(allen_template_flirted)
 mouse_masked_flirted_synned_image = nib.Nifti1Image(allen_template_flirted_synned,
@@ -94,7 +96,7 @@ os.system('flirt -in ' + allen_annotation_path + ' \
                  -ref ' + AMBMC_template_path + ' \
                  -out ' + allen_annotation_flirted_path + ' \
                  -init ' + allen_template_flirt_path + ' \
-                 -applyfxm' + ' \
+                 -applyxfm' + ' \
                  -verbose 1')
 allen_annotation_flirted_image = nib.load(allen_annotation_flirted_path)
 allen_annotation_flirted = allen_annotation_flirted_image.get_fdata()

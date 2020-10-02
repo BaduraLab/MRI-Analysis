@@ -80,7 +80,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
                            static_grid2world=reference_template_image.get_qform(),
                            moving_grid2world=mouse_masked_flirted_image.get_qform())
     with open(mouse_masked_flirted_syn_path, 'wb') as f:
-        pickle.dump([mapping, metric, level_iters, sdr], f)
+        pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
     # with open(mouse_masked_syn_path, 'rb') as f:
     #     [mapping, metric, level_iters, sdr] = pickle.load(f)
 

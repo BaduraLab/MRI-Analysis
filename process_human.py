@@ -147,7 +147,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
                                static_grid2world=template_image.get_qform(),
                                moving_grid2world=input_flirted_image.get_qform())
         with open(input_flirted_syn_path, 'wb') as f:
-            pickle.dump([mapping, metric, level_iters, sdr], f)
+            pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
 
         input_flirted_synned = mapping.transform(input_flirted)
         input_flirted_synned_invsynned = mapping.transform_inverse(input_flirted_synned)
