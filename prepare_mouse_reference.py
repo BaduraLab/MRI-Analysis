@@ -16,7 +16,7 @@ allen_template_flirted_path = os.path.join(reference_path, 'average_template_25_
 allen_template_flirt_path = os.path.join(reference_path, 'average_template_25_reoriented_flirt.mat')
 allen_template_flirted_synned_path = os.path.join(reference_path,
                                                   'average_template_25_reoriented_flirted_synned.nii.gz')
-allen_template_flirted_syn_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn.p')
+allen_template_flirted_syn_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn.pickle.gz')
 forw_field_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn_forw.nii.gz')
 back_field_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn_back.nii.gz')
 allen_annotation_flirted_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')

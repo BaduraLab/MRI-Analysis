@@ -40,7 +40,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_translated_path = os.path.join(MousePath, mouse_string + '_translated.nii.gz')
     mouse_masked_flirted_path = os.path.join(MousePath, mouse_string + '_flirted.nii.gz')
     mouse_masked_flirt_path = os.path.join(MousePath, mouse_string + '_flirt.mat')
-    mouse_masked_flirted_syn_path = os.path.join(MousePath, mouse_string + '_flirted_syn.p')
+    mouse_masked_flirted_syn_path = os.path.join(MousePath, mouse_string + '_flirted_syn.pickle.gz')
     mouse_masked_invflirt_path = os.path.join(MousePath, mouse_string + '_invflirt.mat')
     mouse_masked_flirted_synned_path = os.path.join(MousePath, mouse_string + '_flirted_synned.nii.gz')
     reference_annotation_invsynned_path = os.path.join(MousePath, mouse_string + '_annotation_flirted.nii.gz')

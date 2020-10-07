@@ -100,7 +100,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
 
         input_flirted_path = input_noext+'_flirted_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         input_flirt_path = input_noext+'_flirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
-        input_flirted_syn_path = input_noext+'_flirted_syn_'+template_name+'_'+str(iAnnotationPath)+'.p'
+        input_flirted_syn_path = input_noext+'_flirted_syn_'+template_name+'_'+str(iAnnotationPath)+'.pickle.gz'
         input_invflirt_path = input_noext+'_invflirt_'+template_name+'_'+str(iAnnotationPath)+'.mat'
         input_flirted_synned_path = input_noext+'_flirted_synned_'+template_name+'_'+str(iAnnotationPath)+'.nii.gz'
         annotation_name = annotation_name_list[iAnnotationPath]
