@@ -14,7 +14,7 @@ from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
 import datetime
 # import SimpleITK as sitk
-import pickle
+from compress_pickle import dump, load
 
 # Define
 data_path = os.path.join('Data', 'Mouse', 'Processed')
@@ -45,6 +45,8 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_flirted_synned_path = os.path.join(MousePath, mouse_string + '_flirted_synned.nii.gz')
     reference_annotation_invsynned_path = os.path.join(MousePath, mouse_string + '_annotation_flirted.nii.gz')
     reference_annotation_invsynned_invflirted_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
+    forw_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
+    back_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
 
     # Load images
     mouse_image = nib.load(mouse_path)
@@ -80,22 +82,24 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
                            static_grid2world=reference_template_image.get_qform(),
                            moving_grid2world=mouse_masked_flirted_image.get_qform())
     with open(mouse_masked_flirted_syn_path, 'wb') as f:
-        pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
+        dump([mapping, metric, level_iters, sdr], f, protocol=4)
     # with open(mouse_masked_syn_path, 'rb') as f:
-    #     [mapping, metric, level_iters, sdr] = pickle.load(f)
+    #     [mapping, metric, level_iters, sdr] = load(f)
+
     forw_field = mapping.get_forward_field()
     back_field = mapping.get_backward_field()
     forw_SS = np.sum(np.power(forw_field, 2))
     back_SS = np.sum(np.power(back_field, 2))
     dif_SSD = np.sum(np.power(forw_field + back_field, 2))
     dif_SSD_norm = dif_SSD / ((forw_SS + back_SS) / 2)
+    print(f'dif_SSD_norm = {dif_SSD_norm}')
 
-    forw_field_image = nib.Nifti1Image(forw_field,
-                                       mouse_masked_flirted_image.affine)
-    nib.save(forw_field_image, forw_field_path)
-    back_field_image = nib.Nifti1Image(back_field,
-                                       mouse_masked_flirted_image.affine)
-    nib.save(back_field_image, back_field_path)
+    # forw_field_image = nib.Nifti1Image(forw_field,
+    #                                    mouse_masked_flirted_image.affine)
+    # nib.save(forw_field_image, forw_field_path)
+    # back_field_image = nib.Nifti1Image(back_field,
+    #                                    mouse_masked_flirted_image.affine)
+    # nib.save(back_field_image, back_field_path)
 
 
     mouse_masked_flirted_synned = mapping.transform(mouse_masked_flirted)

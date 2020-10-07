@@ -5,7 +5,7 @@ import nibabel.processing as nib_processing
 from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
 from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
-import pickle
+from compress_pickle import dump, load
 import numpy as np
 
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
@@ -81,23 +81,22 @@ mapping = sdr.optimize(static=AMBMC_template,
                        static_grid2world=AMBMC_template_image.get_qform(),
                        moving_grid2world=allen_template_flirted_image.get_qform())
 with open(allen_template_flirted_syn_path, 'wb') as f:
-    pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
+    dump([mapping, metric, level_iters, sdr], f, protocol=4)
+
 forw_field = mapping.get_forward_field()
 back_field = mapping.get_backward_field()
 forw_SS = np.sum(np.power(forw_field, 2))
 back_SS = np.sum(np.power(back_field, 2))
 dif_SSD = np.sum(np.power(forw_field + back_field, 2))
 dif_SSD_norm = dif_SSD / ((forw_SS + back_SS) / 2)
+print(f'dif_SSD_norm = {dif_SSD_norm}')
 
-forw_field_image = nib.Nifti1Image(forw_field,
-                                   allen_template_flirted_image.affine)
-nib.save(forw_field_image, forw_field_path)
-back_field_image = nib.Nifti1Image(back_field,
-                                   allen_template_flirted_image.affine)
-nib.save(back_field_image, back_field_path)
-
-# with open(allen_template_flirted_syn_path, 'rb') as f:
-#     [mapping, metric, level_iters, sdr] = pickle.load(f)
+# forw_field_image = nib.Nifti1Image(forw_field,
+#                                    allen_template_flirted_image.affine)
+# nib.save(forw_field_image, forw_field_path)
+# back_field_image = nib.Nifti1Image(back_field,
+#                                    allen_template_flirted_image.affine)
+# nib.save(back_field_image, back_field_path)
 
 allen_template_flirted_synned = mapping.transform(allen_template_flirted)
 mouse_masked_flirted_synned_image = nib.Nifti1Image(allen_template_flirted_synned,

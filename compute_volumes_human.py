@@ -82,6 +82,7 @@ reference_cerebellum_table.to_csv(os.path.join(analysis_path, 'reference_cerebel
 # reference_table[reference_table['']=='']
 
 
+
 ## Calculate volumes for all input files
 output_table_list = list()
 for iAnnotation in range(nAnnotation):
@@ -190,8 +191,6 @@ for iAnnotation in range(nAnnotation):
         output_image = nib.Nifti1Image(annotation_remapped,
                                        annotation_image.affine)
         nib.save(output_image, annotation_aFD_path)
-
-
 
 
 

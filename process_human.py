@@ -9,8 +9,8 @@ from dipy.align.metrics import CCMetric
 # from dipy.align.metrics import SSDMetric
 import glob
 from pathlib import Path
-import pickle
 from functions import save_image
+from compress_pickle import dump, load
 
 
 
@@ -147,7 +147,15 @@ for iInputPath, InputPath in enumerate(input_path_list):
                                static_grid2world=template_image.get_qform(),
                                moving_grid2world=input_flirted_image.get_qform())
         with open(input_flirted_syn_path, 'wb') as f:
-            pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
+            dump([mapping, metric, level_iters, sdr], f, protocol=4)
+
+        forw_field = mapping.get_forward_field()
+        back_field = mapping.get_backward_field()
+        forw_SS = np.sum(np.power(forw_field, 2))
+        back_SS = np.sum(np.power(back_field, 2))
+        dif_SSD = np.sum(np.power(forw_field + back_field, 2))
+        dif_SSD_norm = dif_SSD / ((forw_SS + back_SS) / 2)
+        print(f'dif_SSD_norm = {dif_SSD_norm}')
 
         input_flirted_synned = mapping.transform(input_flirted)
         input_flirted_synned_invsynned = mapping.transform_inverse(input_flirted_synned)
