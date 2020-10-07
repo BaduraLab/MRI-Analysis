@@ -83,11 +83,24 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
         pickle.dump([mapping, metric, level_iters, sdr], f, protocol=4)
     # with open(mouse_masked_syn_path, 'rb') as f:
     #     [mapping, metric, level_iters, sdr] = pickle.load(f)
+    forw_field = mapping.get_forward_field()
+    back_field = mapping.get_backward_field()
+    forw_SS = np.sum(np.power(forw_field, 2))
+    back_SS = np.sum(np.power(back_field, 2))
+    dif_SSD = np.sum(np.power(forw_field + back_field, 2))
+    dif_SSD_norm = dif_SSD / ((forw_SS + back_SS) / 2)
+
+    forw_field_image = nib.Nifti1Image(forw_field,
+                                       mouse_masked_flirted_image.affine)
+    nib.save(forw_field_image, forw_field_path)
+    back_field_image = nib.Nifti1Image(back_field,
+                                       mouse_masked_flirted_image.affine)
+    nib.save(back_field_image, back_field_path)
 
 
     mouse_masked_flirted_synned = mapping.transform(mouse_masked_flirted)
     mouse_masked_flirted_synned_image = nib.Nifti1Image(mouse_masked_flirted_synned,
-                                                        mouse_masked_flirted_image.affine,
+                                                                 mouse_masked_flirted_image.affine,
                                                         mouse_masked_flirted_image.header)
     nib.save(mouse_masked_flirted_synned_image, mouse_masked_flirted_synned_path)
 
