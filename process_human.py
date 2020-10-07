@@ -10,6 +10,7 @@ from dipy.align.metrics import CCMetric
 import glob
 from pathlib import Path
 import pickle
+from functions import save_image
 
 
 
@@ -59,6 +60,7 @@ annotation_name_list = ['suit',
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 input_skull_path_list = glob.glob(os.path.join(data_path, '*', '*skull_reoriented.nii.gz'))
 input_path_list = list(set(input_path_list) - set(input_skull_path_list))
+input_orsuit_path_list = glob.glob(os.path.join(data_path, '*', 'iw_Lobules-SUIT_u_a_*_reoriented_seg1.nii'))
 
 # Define
 probability_threshold = [0.2, 0.4, np.nan, np.nan] # Might be changed to list the same length as number of annotations
@@ -68,8 +70,6 @@ def saveImage(image_fdata, path, image_qform_template):
     image.set_qform(image_qform_template.affine, code=1)
     image.set_sform(image_qform_template.affine, code=0)
     nib.save(image, path)
-
-
 
 
 
@@ -255,38 +255,22 @@ for iInputPath, InputPath in enumerate(input_path_list):
 
 
 
+# Copy images processed by MATLAB SUIT to files with your naming scheme
+for Path in input_orsuit_path_list:
+    orsuit_image = nib.load(Path)
 
+    subject = Path.split(os.sep)[-2]
 
+    # Define output paths
+    orsuit_adjusted_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg.nii.gz')
+    # orsuit_adjusted_1_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg_adjusted_1.nii.gz')
+    # orsuit_adjusted_2_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg_adjusted_2.nii.gz')
 
-
-
-
-
-    # annotation_invsynned_invflirted = annotation_invsynned_invflirted_image.get_fdata()
-    # annotation_invsynned_invflirted_list.append(annotation_invsynned_invflirted)
-
-    # annotation_invsynned_invflirted_list_perannotation.append(annotation_invsynned_invflirted)
-
-
-
-
-
-
-    # annotation_invsynned_invflirted_4D_perannotation = np.array(annotation_invsynned_invflirted_list_perannotation).transpose(1, 2, 3, 0)
-    # annotation_invsynned_invflirted_4D_image_perannotation = nib.Nifti1Image(annotation_invsynned_invflirted_4D_perannotation, np.eye(4))
-    # annotation_invsynned_invflirted_4D_image_perannotation.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
-    # annotation_invsynned_invflirted_4D_image_perannotation.set_sform(np.eye(4), code=0)
-
-
-    # annotation_invsynned_invflirted_4D = np.array(annotation_invsynned_invflirted_list).transpose(1, 2, 3, 0)
-    # annotation_invsynned_invflirted_4D_image = nib.Nifti1Image(annotation_invsynned_invflirted_4D, np.eye(4))
-    # annotation_invsynned_invflirted_4D_image.set_qform(annotation_invsynned_invflirted_image.get_qform(), code=1)
-    # annotation_invsynned_invflirted_4D_image.set_sform(np.eye(4), code=0)
-
-
-    # image.set_sform(np.eye(4), code=0)
-    # image = nib.Nifti1Image(image_fdata, np.eye(4))
-    # image.set_qform(image_qform_template.get_qform(), code=1)
-    # # image.set_sform(np.eye(4), code=0)
-    # image.set_sform(image_qform_template.get_qform(), code=0)
-    # nib.save(image, path)
+    nib.save(orsuit_image, orsuit_adjusted_path)
+    print(orsuit_adjusted_path)
+    # if not os.path.isfile(orsuit_adjusted_1_path):
+    #     nib.save(orsuit_image, orsuit_adjusted_1_path)
+    #     print(orsuit_adjusted_1_path)
+    # if not os.path.isfile(orsuit_adjusted_2_path):
+    #     nib.save(orsuit_image, orsuit_adjusted_2_path)
+    #     print(orsuit_adjusted_2_path)

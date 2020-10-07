@@ -197,22 +197,34 @@ for iAnnotation in range(nAnnotation):
 
 ## Plotting
 # cmap = matplotlib.cm.get_cmap('lines')
+# VOIs = ['substantia nigra pars reticula',
+#         'substantia nigra pars compacta',
+#         'nucleus accumbens',
+#         'mask',
+#         'Right_VIIb',
+#         'Left_VIIb',
+#         'Right_VIIIa',
+#         'Right_VIIIb',
+#         'Left_VIIIa',
+#         'Left_VIIIb']
 VOIs = ['substantia nigra pars reticula',
         'substantia nigra pars compacta',
         'nucleus accumbens',
         'mask',
-        'Right_VIIb',
-        'Left_VIIb',
-        'Right_VIIIa',
-        'Right_VIIIb',
-        'Left_VIIIa',
-        'Left_VIIIb']
+        'Left_CrusI',
+        'Right_CrusI',
+        'Vermis_CrusI',
+        'Left_CrusII',
+        'Right_CrusII',
+        'Left_X',
+        'Right_X']
 for iVOI in range(len(VOIs)):
     output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
     ax = output_table_all_plot.plot.bar(x='subject',
                                         y='VolumeNormalized',
                                         rot=0,
                                         color=[[0.4, 0.4, 0.85],
+                                               [0.4, 0.4, 0.85],
                                                [0.4, 0.4, 0.85],
                                                [0.85, 0.4, 0.4]])
     plt.ylabel('Volume Normalized')

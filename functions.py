@@ -99,5 +99,9 @@ def subjectPath2volumeTable(subject_path):
 def posField2vecField(posField, affine):
     print('lala')
 
+    affine*
+
     vecField = 1
     return vecField
+
+    grid position

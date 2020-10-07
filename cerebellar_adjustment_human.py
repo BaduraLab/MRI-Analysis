@@ -48,6 +48,9 @@ for iPath in input_path_list_list[0]:
     automatic_path = iPath.split('suit')[0] + 'orsuit_thrarg.nii.gz'
     manual_path = iPath.split('suit')[0] + 'suit_maxprob_thresholded_manual.nii.gz'
     adjusted_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted.nii.gz'
+    adjusted_1_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_1.nii.gz'
+    adjusted_2_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_2.nii.gz'
+    print(automatic_path)
     print(adjusted_path)
 
     # Load image
@@ -92,10 +95,21 @@ for iPath in input_path_list_list[0]:
     adjusted[suit_remove_logical] = 0
 
     # Save adjusted image
+    adjusted = np.round(adjusted)
+    adjusted = adjusted.astype(int)
     adjusted_image = nib.Nifti1Image(adjusted,
                                      automatic_image.affine,
                                      automatic_image.header)
     nib.save(adjusted_image, adjusted_path)
+
+    if not os.path.isfile(adjusted_1_path):
+        nib.save(adjusted_image, adjusted_1_path)
+        print(adjusted_1_path)
+    if not os.path.isfile(adjusted_2_path):
+        nib.save(adjusted_image, adjusted_2_path)
+        print(adjusted_2_path)
+
+
 
 # Adjust automatic CerebrA with manual suit
 for iPath in input_path_list_list[2]:
@@ -109,6 +123,7 @@ for iPath in input_path_list_list[2]:
     manual_path = iPath.split('CerebrA')[0] + 'suit_maxprob_thresholded_manual.nii.gz'
     adjusted_path = iPath.split('CerebrA')[0] + 'CerebrA_thrarg_adjusted.nii.gz'
     orsuit_path = iPath.split('CerebrA')[0] + 'orsuit_thrarg.nii.gz'
+    print(automatic_path)
     print(adjusted_path)
 
     # Load image
@@ -217,6 +232,8 @@ for iPath in input_path_list_list[2]:
                                  correction=adjusted, correction_logical=np.isin(adjusted, [39, 90]))
 
     # Save adjusted image
+    adjusted = np.round(adjusted)
+    adjusted = adjusted.astype(int)
     adjusted_image = nib.Nifti1Image(adjusted,
                                      automatic_image.affine,
                                      automatic_image.header)

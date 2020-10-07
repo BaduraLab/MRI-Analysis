@@ -93,7 +93,11 @@ for iPath in input_path_list_list[0]:
                     # print([manual_original, automatic_original, automatic_new])
                     break
 
+    # Remove points which are not marked in cerebellar mask (_1)
+    adjusted = adjusted * automatic_logical
+
     # Save adjusted image
+    adjusted = np.round(adjusted).astype(int)
     adjusted_image = nib.Nifti1Image(adjusted,
                                      manual_image.affine,
                                      manual_image.header)
