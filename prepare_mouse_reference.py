@@ -82,6 +82,8 @@ mapping = sdr.optimize(static=AMBMC_template,
                        moving_grid2world=allen_template_flirted_image.get_qform())
 with open(allen_template_flirted_syn_path, 'wb') as f:
     dump([mapping, metric, level_iters, sdr], f, protocol=4, compression='gzip')
+# with open(allen_template_flirted_syn_path, 'rb') as f:
+#     [mapping, metric, level_iters, sdr] = load(f, compression='gzip')
 
 forw_field = mapping.get_forward_field()
 back_field = mapping.get_backward_field()

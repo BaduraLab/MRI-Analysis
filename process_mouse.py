@@ -27,6 +27,7 @@ reference_template_path = os.path.join(reference_path, 'average_template_25_reor
 reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
 
 # Loop through mice
+mouse_path_list = mouse_path_list[10:]
 for iMousePath, MousePath in enumerate(mouse_path_list):
     print(iMousePath)
     print(MousePath)
@@ -49,6 +50,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     back_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
 
     # Load images
+    print('loading images')
     mouse_image = nib.load(mouse_path)
     mouse = mouse_image.get_fdata()
     mask_image = nib.load(mask_path)
@@ -59,21 +61,24 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     reference_annotation = reference_annotation_image.get_fdata()
 
     # Mask mouse image
+    print('mask image')
     mask = mask / np.max(mask)
     mouse_masked = mouse * mask
     mouse_masked_image = nib.Nifti1Image(mouse_masked, mouse_image.affine, mouse_image.header)
     nib.save(mouse_masked_image, mouse_masked_path)
 
     # FLIRT subject to reference
+    print('FLIRT start')
     os.system('flirt -in ' + mouse_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + mouse_masked_flirted_path + ' \
                      -omat ' + mouse_masked_flirt_path + ' \
-                     -verbose 1')
+                     -verbose 0')
     mouse_masked_flirted_image = nib.load(mouse_masked_flirted_path)
     mouse_masked_flirted = mouse_masked_flirted_image.get_fdata()
 
     # SyN flirted images to reference
+    print('SyN')
     metric = CCMetric(3)
     level_iters = [10, 10, 5, 5, 5]
     sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
@@ -82,7 +87,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
                            static_grid2world=reference_template_image.get_qform(),
                            moving_grid2world=mouse_masked_flirted_image.get_qform())
     with open(mouse_masked_flirted_syn_path, 'wb') as f:
-        dump([mapping, metric, level_iters, sdr], f, protocol=4)
+        dump([mapping, metric, level_iters, sdr], f, protocol=4, compression='gzip')
     # with open(mouse_masked_syn_path, 'rb') as f:
     #     [mapping, metric, level_iters, sdr] = load(f)
 
@@ -109,6 +114,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     nib.save(mouse_masked_flirted_synned_image, mouse_masked_flirted_synned_path)
 
     # Inverse SyN reference to subject space
+    print('inverse SyN')
     reference_annotation_invsynned = mapping.transform_inverse(reference_annotation, interpolation='nearest')
     reference_annotation_invsynned_image = nib.Nifti1Image(reference_annotation_invsynned,
                                                            mouse_masked_flirted_image.affine,
@@ -116,6 +122,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     nib.save(reference_annotation_invsynned_image, reference_annotation_invsynned_path)
 
     # inflirt invsynned annotation to flirted image to get annotation of original image
+    print('inverse FLIRT')
     os.system('convert_xfm -omat '+mouse_masked_invflirt_path+' -inverse '+mouse_masked_flirt_path)
     os.system('flirt -in ' + reference_annotation_invsynned_path + ' \
                      -ref ' + mouse_path + ' \

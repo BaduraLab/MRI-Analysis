@@ -147,7 +147,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
                                static_grid2world=template_image.get_qform(),
                                moving_grid2world=input_flirted_image.get_qform())
         with open(input_flirted_syn_path, 'wb') as f:
-            dump([mapping, metric, level_iters, sdr], f, protocol=4)
+            dump([mapping, metric, level_iters, sdr], f, protocol=4, compression='gzip')
 
         forw_field = mapping.get_forward_field()
         back_field = mapping.get_backward_field()
