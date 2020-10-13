@@ -96,10 +96,21 @@ def subjectPath2volumeTable(subject_path):
     return volume_table
 
 # Function to compute volumes for image
-def posField2vecField(posField, affine):
-    print('lala')
+def imageFLIRT2defField(image, flirt):
 
-    # vecField = affine*posField
+    M_image = image.affine[:3, :3]
+    abc_image = image.affine[:3, 3]
+    M_flirt = flirt[:3, :3]
+    abc_flirt = flirt[:3, 3]
 
-    vecField = 1
-    return vecField
+    image_shape = image.shape #######################
+    defField = np.empty(shape=(image_shape[0], image_shape[1], image_shape[2], 3))
+    for i in range(image_shape[0]):
+        for j in range(image_shape[1]):
+            for k in range(image_shape[2]):
+                posVec = M_image.dot([i, j, k]) + abc_image
+                flirtVec = M_flirt.dot(posVec) + abc_flirt
+                defVec = flirtVec - posVec
+                defField[i,j,k,:] = defVec
+
+    return defField
