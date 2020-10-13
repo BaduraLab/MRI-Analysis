@@ -27,7 +27,6 @@ reference_template_path = os.path.join(reference_path, 'average_template_25_reor
 reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
 
 # Loop through mice
-mouse_path_list = mouse_path_list[11:]
 for iMousePath, MousePath in enumerate(mouse_path_list):
     print(iMousePath)
     print(MousePath)
