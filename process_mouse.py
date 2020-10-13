@@ -27,7 +27,7 @@ reference_template_path = os.path.join(reference_path, 'average_template_25_reor
 reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
 
 # Loop through mice
-mouse_path_list = mouse_path_list[10:]
+mouse_path_list = mouse_path_list[11:]
 for iMousePath, MousePath in enumerate(mouse_path_list):
     print(iMousePath)
     print(MousePath)
@@ -69,7 +69,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
 
     # FLIRT subject to reference
     print('FLIRT start')
-    os.system('flirt -in ' + mouse_path + ' \
+    os.system('flirt -in ' + mouse_masked_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + mouse_masked_flirted_path + ' \
                      -omat ' + mouse_masked_flirt_path + ' \

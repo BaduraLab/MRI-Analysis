@@ -60,6 +60,7 @@ annotation_name_list = ['suit',
 input_path_list = glob.glob(os.path.join(data_path, '*', '*_reoriented.nii.gz'))
 input_skull_path_list = glob.glob(os.path.join(data_path, '*', '*skull_reoriented.nii.gz'))
 input_path_list = list(set(input_path_list) - set(input_skull_path_list))
+# input_path_list = [input_path_list[4]]
 input_orsuit_path_list = glob.glob(os.path.join(data_path, '*', 'iw_Lobules-SUIT_u_a_*_reoriented_seg1.nii'))
 
 # Define
@@ -113,7 +114,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
                          -ref ' + template_path + ' \
                          -out ' + input_flirted_path + ' \
                          -omat ' + input_flirt_path + ' \
-                         -verbose 1')
+                         -verbose 0')
 
         # Load images
         input_image = nib.load(InputPath)
@@ -128,7 +129,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
                              -ref ' + template_path + ' \
                              -out ' + input_skull_flirted_path + ' \
                              -init ' + input_flirt_path + ' \
-                             -verbose 1')
+                             -verbose 0')
             input_skull_flirted_image = nib.load(input_skull_flirted_path)
             input_skull_flirted = input_skull_flirted_image.get_fdata()
         else:
@@ -214,7 +215,7 @@ for iInputPath, InputPath in enumerate(input_path_list):
                              -init ' + input_invflirt_path + ' \
                              -applyxfm \
                              -interp ' + interpolation_method_flirt + ' \
-                             -verbose 1')
+                             -verbose 0')
 
             # Load annotation of native image and save to list
             annotation_invsynned_invflirted_image = nib.load(annotation_invsynned_invflirted_path)
