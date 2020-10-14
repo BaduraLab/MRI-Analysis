@@ -25,7 +25,7 @@ structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobu
                        os.path.join(reference_path, 'subcortical', 'subcortical.csv'),
                        os.path.join(reference_path, 'CerebrA', 'CerebrA.csv'),
                        os.path.join(reference_path, 'CerebrA', 'mask.csv')]
-manual_path_list = glob.glob(os.path.join(data_path, '*', '*annotation_suit_maxprob_thresholded_manual.nii.gz'))
+manual_path_list = glob.glob(os.path.join(data_path, '*', '*annotation_orsuit_thrarg_gray_manual.nii.gz'))
 CerebrA_path = os.path.join(reference_path, 'CerebrA')
 CerebrA_annotation_path = os.path.join(CerebrA_path, 'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz')
 CerebrA_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
@@ -46,7 +46,7 @@ for iPath in input_path_list_list[0]:
 
     # Get adjusted output path
     automatic_path = iPath.split('suit')[0] + 'orsuit_thrarg.nii.gz'
-    manual_path = iPath.split('suit')[0] + 'suit_maxprob_thresholded_manual.nii.gz'
+    manual_path = iPath.split('suit')[0] + 'orsuit_thrarg_gray_manual.nii.gz'
     adjusted_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted.nii.gz'
     adjusted_1_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_1.nii.gz'
     adjusted_2_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_2.nii.gz'
@@ -120,7 +120,7 @@ for iPath in input_path_list_list[2]:
 
     # Get adjusted output path
     automatic_path = iPath.split('CerebrA')[0] + 'CerebrA_thrarg.nii.gz'
-    manual_path = iPath.split('CerebrA')[0] + 'suit_maxprob_thresholded_manual.nii.gz'
+    manual_path = iPath.split('CerebrA')[0] + 'orsuit_thrarg_gray_manual.nii.gz'
     adjusted_path = iPath.split('CerebrA')[0] + 'CerebrA_thrarg_adjusted.nii.gz'
     orsuit_path = iPath.split('CerebrA')[0] + 'orsuit_thrarg.nii.gz'
     print(automatic_path)
