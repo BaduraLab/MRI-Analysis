@@ -68,18 +68,18 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_image = nib.Nifti1Image(mouse_masked, mouse_image.affine, mouse_image.header)
     nib.save(mouse_masked_image, mouse_masked_path)
 
-    # FLIRT subject to reference
-    print('FLIRT rigid start')
-    os.system('flirt -in ' + mouse_masked_path + ' \
-                     -ref ' + reference_template_path + ' \
-                     -out ' + mouse_masked_flirtedRigid_path + ' \
-                     -omat ' + mouse_masked_flirtRigid_path + ' \
-                     -dof ' + '6' + ' \
-                     -verbose 0')    # FLIRT subject to reference
+    # # FLIRT subject to reference
+    # print('FLIRT rigid start')
+    # os.system('flirt -in ' + mouse_masked_path + ' \
+    #                  -ref ' + reference_template_path + ' \
+    #                  -out ' + mouse_masked_flirtedRigid_path + ' \
+    #                  -omat ' + mouse_masked_flirtRigid_path + ' \
+    #                  -dof ' + '6' + ' \
+    #                  -verbose 0')    # FLIRT subject to reference
 
     # FLIRT rigidly transformed subject to reference
     print('FLIRT affine start')
-    os.system('flirt -in ' + mouse_masked_flirtedRigid_path + ' \
+    os.system('flirt -in ' + mouse_masked_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + mouse_masked_flirted_path + ' \
                      -omat ' + mouse_masked_flirt_path + ' \

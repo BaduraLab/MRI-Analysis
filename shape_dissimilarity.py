@@ -2,18 +2,26 @@ from functions import imageFLIRT2defField
 import nibabel as nib
 from compress_pickle import dump, load
 import numpy as np
+import os
+import glob
 
-or_path = 'Data/Mouse/Processed/WT_50/WT_50.nii.gz'
-defField_path = 'Data/Mouse/Processed/WT_50/WT_50_flirt_defField.nii.gz'
-defField_magnitude_path = 'Data/Mouse/Processed/WT_50/WT_50_flirt_defField_magnitude.nii.gz'
-or_image = nib.load(or_path)
-with open('Data/Mouse/Processed/WT_50/WT_50_flirt.mat', 'r') as f:
-    txt = f.read()
-    flirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
-    # for num in l:
-    #     if len(num)>5:
-    #         print(num)
-print(flirt)
+data_path = os.path.join('Data', 'Mouse', 'Processed')
+data_path_list = glob.glob(os.path.join(data_path, '*'))
+for Path in data_path_list:
+    subject = Path.split(os.sep)[-1]
+
+    or_path = os.path.join(Path, subject + '.nii.gz')
+    flirtRigid_path = os.path.join(Path, subject + '_flirtRigid.mat')
+    flirt_path = os.path.join(Path, subject + '_flirt.mat')
+    defField_path = os.path.join(Path, subject + '_flirt_defField.nii.gz')
+    defField_magnitude_path = os.path.join(Path, subject + '_flirt_defField_magnitude.nii.gz')
+
+    or_image = nib.load(or_path)
+
+    with open('Data/Mouse/Processed/WT_50/WT_50_flirt.mat', 'r') as f:
+        txt = f.read()
+        flirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+    print(flirt)
 
 defField = imageFLIRT2defField(or_image, flirt)
 defField_image = nib.Nifti1Image(defField, or_image.affine)

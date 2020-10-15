@@ -63,18 +63,18 @@ AMBMC_template_image = nib.load(AMBMC_template_path)
 print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
-# FLIRT subject to reference
-print('FLIRT rigid start')
-os.system('flirt -in ' + allen_template_path + ' \
-                 -ref ' + AMBMC_template_path + ' \
-                 -out ' + allen_template_flirtedRigid_path + ' \
-                 -omat ' + allen_template_flirtRigid_path + ' \
-                 -dof ' + '6' + ' \
-                 -verbose 0')  # FLIRT subject to reference
+# # FLIRT subject to reference
+# print('FLIRT rigid start')
+# os.system('flirt -in ' + allen_template_path + ' \
+#                  -ref ' + AMBMC_template_path + ' \
+#                  -out ' + allen_template_flirtedRigid_path + ' \
+#                  -omat ' + allen_template_flirtRigid_path + ' \
+#                  -dof ' + '6' + ' \
+#                  -verbose 0')  # FLIRT subject to reference
 
 # FLIRT allen to AMBMC
 print('FLIRT affine start')
-os.system('flirt -in ' + allen_template_flirtedRigid_path + ' \
+os.system('flirt -in ' + allen_template_path + ' \
                  -ref ' + AMBMC_template_path + ' \
                  -out ' + allen_template_flirted_path + ' \
                  -omat ' + allen_template_flirt_path + ' \
