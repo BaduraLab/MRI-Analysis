@@ -23,8 +23,8 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # average_template_50_to_AMBMC_flirted.nii.gz
 # reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
 # reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
-reference_template_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_synned.nii.gz')
-reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
+reference_template_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
+reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
 
 # Loop through mice
 for iMousePath, MousePath in enumerate(mouse_path_list):
@@ -38,7 +38,9 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mask_path = os.path.join(MousePath, mouse_string + '_mask_t=500_v=380_k=6.mask.nii.gz')
     mouse_masked_path = os.path.join(MousePath, mouse_string + '_masked.nii.gz')
     mouse_masked_translated_path = os.path.join(MousePath, mouse_string + '_translated.nii.gz')
+    mouse_masked_flirtedRigid_path = os.path.join(MousePath, mouse_string + '_flirtedRigid.nii.gz')
     mouse_masked_flirted_path = os.path.join(MousePath, mouse_string + '_flirted.nii.gz')
+    mouse_masked_flirtRigid_path = os.path.join(MousePath, mouse_string + '_flirtRigid.mat')
     mouse_masked_flirt_path = os.path.join(MousePath, mouse_string + '_flirt.mat')
     mouse_masked_flirted_syn_path = os.path.join(MousePath, mouse_string + '_flirted_syn.pickle.gz')
     mouse_masked_invflirt_path = os.path.join(MousePath, mouse_string + '_invflirt.mat')
@@ -67,8 +69,17 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     nib.save(mouse_masked_image, mouse_masked_path)
 
     # FLIRT subject to reference
-    print('FLIRT start')
+    print('FLIRT rigid start')
     os.system('flirt -in ' + mouse_masked_path + ' \
+                     -ref ' + reference_template_path + ' \
+                     -out ' + mouse_masked_flirtedRigid_path + ' \
+                     -omat ' + mouse_masked_flirtRigid_path + ' \
+                     -dof ' + '6' + ' \
+                     -verbose 0')    # FLIRT subject to reference
+
+    # FLIRT rigidly transformed subject to reference
+    print('FLIRT affine start')
+    os.system('flirt -in ' + mouse_masked_flirtedRigid_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + mouse_masked_flirted_path + ' \
                      -omat ' + mouse_masked_flirt_path + ' \

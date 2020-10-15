@@ -12,7 +12,9 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 allen_template_path = os.path.join(reference_path, 'average_template_25_reoriented.nii.gz')
 allen_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented.nii.gz')
 allen_structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
+allen_template_flirtedRigid_path = os.path.join(reference_path, 'average_template_25_reoriented_flirtedRigid.nii.gz')
 allen_template_flirted_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
+allen_template_flirtRigid_path = os.path.join(reference_path, 'average_template_25_reoriented_flirtRigid.mat')
 allen_template_flirt_path = os.path.join(reference_path, 'average_template_25_reoriented_flirt.mat')
 allen_template_flirted_synned_path = os.path.join(reference_path,
                                                   'average_template_25_reoriented_flirted_synned.nii.gz')
@@ -61,13 +63,22 @@ AMBMC_template_image = nib.load(AMBMC_template_path)
 print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
-# FLIRT allen to AMBMC
-print('FLIRT')
+# FLIRT subject to reference
+print('FLIRT rigid start')
 os.system('flirt -in ' + allen_template_path + ' \
+                 -ref ' + AMBMC_template_path + ' \
+                 -out ' + allen_template_flirtedRigid_path + ' \
+                 -omat ' + allen_template_flirtRigid_path + ' \
+                 -dof ' + '6' + ' \
+                 -verbose 0')  # FLIRT subject to reference
+
+# FLIRT allen to AMBMC
+print('FLIRT affine start')
+os.system('flirt -in ' + allen_template_flirtedRigid_path + ' \
                  -ref ' + AMBMC_template_path + ' \
                  -out ' + allen_template_flirted_path + ' \
                  -omat ' + allen_template_flirt_path + ' \
-                 -verbose 1')
+                 -verbose 0')
 allen_template_flirted_image = nib.load(allen_template_flirted_path)
 allen_template_flirted = allen_template_flirted_image.get_fdata()
 
