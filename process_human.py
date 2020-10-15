@@ -272,16 +272,16 @@ for Path in input_orsuit_path_list:
 
     # Define output paths
     orsuit_adjusted_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg.nii.gz')
-    orsuit_adjusted_thresholded_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg_thresholded.nii.gz')
+    orsuit_adjusted_gray_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg_gray.nii.gz')
     # orsuit_adjusted_1_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg_adjusted_1.nii.gz')
     # orsuit_adjusted_2_path = os.path.join(data_path, subject, subject+'_annotation_orsuit_thrarg_adjusted_2.nii.gz')
 
     nib.save(orsuit_image, orsuit_adjusted_path)
     print(orsuit_adjusted_path)
     orsuit = orsuit_image.get_fdata()
-    orsuit_thresholded = orsuit > 0
-    saveImage(orsuit_thresholded, orsuit_adjusted_thresholded_path, orsuit_image)
-    print(orsuit_adjusted_thresholded_path)
+    orsuit_gray = np.isin(orsuit, np.arange(28)+1)
+    saveImage(orsuit_gray, orsuit_adjusted_gray_path, orsuit_image)
+    print(orsuit_adjusted_gray_path)
     # if not os.path.isfile(orsuit_adjusted_1_path):
     #     nib.save(orsuit_image, orsuit_adjusted_1_path)
     #     print(orsuit_adjusted_1_path)
