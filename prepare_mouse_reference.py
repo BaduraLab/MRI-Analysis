@@ -63,14 +63,14 @@ AMBMC_template_image = nib.load(AMBMC_template_path)
 print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
-# # FLIRT subject to reference
-# print('FLIRT rigid start')
-# os.system('flirt -in ' + allen_template_path + ' \
-#                  -ref ' + AMBMC_template_path + ' \
-#                  -out ' + allen_template_flirtedRigid_path + ' \
-#                  -omat ' + allen_template_flirtRigid_path + ' \
-#                  -dof ' + '6' + ' \
-#                  -verbose 0')  # FLIRT subject to reference
+# FLIRT subject to reference
+print('FLIRT rigid start')
+os.system('flirt -in ' + allen_template_path + ' \
+                 -ref ' + AMBMC_template_path + ' \
+                 -out ' + allen_template_flirtedRigid_path + ' \
+                 -omat ' + allen_template_flirtRigid_path + ' \
+                 -dof ' + '6' + ' \
+                 -verbose 0')  # FLIRT subject to reference
 
 # FLIRT allen to AMBMC
 print('FLIRT affine start')
@@ -117,13 +117,22 @@ mouse_masked_flirted_synned_image = nib.Nifti1Image(allen_template_flirted_synne
                                                     allen_template_flirted_image.header)
 nib.save(mouse_masked_flirted_synned_image, allen_template_flirted_synned_path)
 
-# FLIRT allen annotation to AMBMC
+# FLIRT (rigid) allen annotation to AMBMC
 os.system('flirt -in ' + allen_annotation_path + ' \
+                 -ref ' + AMBMC_template_path + ' \
+                 -out ' + allen_annotation_flirtedRigid_path + ' \
+                 -init ' + allen_template_flirtRigid_path + ' \
+                 -dof ' + '6' + ' \
+                 -applyxfm' + ' \
+                 -verbose 0')
+
+# FLIRT (affine) allen annotation to AMBMC
+os.system('flirt -in ' + allen_annotation_flirtedRigid_path + ' \
                  -ref ' + AMBMC_template_path + ' \
                  -out ' + allen_annotation_flirted_path + ' \
                  -init ' + allen_template_flirt_path + ' \
                  -applyxfm' + ' \
-                 -verbose 1')
+                 -verbose 0')
 allen_annotation_flirted_image = nib.load(allen_annotation_flirted_path)
 allen_annotation_flirted = allen_annotation_flirted_image.get_fdata()
 
