@@ -7,7 +7,7 @@ import PIL
 data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
 analysis_path = os.path.join('Data', 'Mouse', 'Analysis', 'imageSequenceFolders')
 
-gif_duration = 20
+gif_duration = 300
 
 for folderpath in list(set(glob.glob(os.path.join(analysis_path, '*')))-set(glob.glob(os.path.join(analysis_path, '*.gif')))):
     print(folderpath)
