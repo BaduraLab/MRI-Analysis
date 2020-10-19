@@ -7,6 +7,7 @@ from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
 from compress_pickle import dump, load
 import numpy as np
+from functions import zeroPadImage
 
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 allen_template_path = os.path.join(reference_path, 'average_template_25_reoriented.nii.gz')
@@ -65,6 +66,9 @@ AMBMC_template_path = AMBMC_path_list[0]
 AMBMC_template_image = nib.load(AMBMC_template_path)
 print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
+
+# AMBMC zero padding
+AMBMC_template = zeroPadImage(AMBMC_template, 0.2)
 
 # FLIRT subject to reference
 print('FLIRT rigid start')

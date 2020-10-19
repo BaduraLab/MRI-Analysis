@@ -7,6 +7,8 @@ import PIL
 data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
 analysis_path = os.path.join('Data', 'Mouse', 'Analysis', 'imageSequenceFolders')
 
+gif_duration = 20
+
 for folderpath in list(set(glob.glob(os.path.join(analysis_path, '*')))-set(glob.glob(os.path.join(analysis_path, '*.gif')))):
     print(folderpath)
 
@@ -15,7 +17,7 @@ for folderpath in list(set(glob.glob(os.path.join(analysis_path, '*')))-set(glob
     im_list[0].save(folderpath+'.gif',
                     save_all=True,
                     append_images=im_list[1:],
-                    optimize=False, duration=10, loop=0)
+                    optimize=False, duration=gif_duration, loop=0)
 
 # Do the same for human data
 data_path = os.path.join('Data', 'Human', 'Processed')
@@ -29,4 +31,4 @@ for folderpath in list(set(glob.glob(os.path.join(analysis_path, '*')))-set(glob
     im_list[0].save(folderpath + '.gif',
                     save_all=True,
                     append_images=im_list[1:],
-                    optimize=False, duration=10, loop=0)
+                    optimize=False, duration=gif_duration, loop=0)
