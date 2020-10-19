@@ -56,4 +56,7 @@ for Path in mouse_path_list + [annotation_path] + mouse_lobular_path_list:
 
     annotation = remap_3D(annotation, id_custom_to_id_mc, id_mc_to_id_custom)
 
-    save_image(annotation, annotation_image, Path.split('.')[0]+'_mc.nii.gz')
+    print(Path)
+    output_path = Path.split('.')[0]+'_mc.nii.gz'
+    print(output_path)
+    save_image(annotation, annotation_image, output_path)

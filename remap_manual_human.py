@@ -35,8 +35,8 @@ reference_structure_mc_path = os.path.join(reference_path, 'suit', 'atlasesSUIT'
 structure = pd.read_csv(reference_structure_path)
 
 # Convert reference structure table
-id_custom_to_id_mc = [25, 1, 23, 12, 19, 13, 17, 2, 11, 22, 10, 20, 5, 9, 3, 30, 31, 7]
-id_mc_to_id_custom = [1, 25, 12, 23, 13, 19, 2, 17, 22, 11, 20, 10, 9, 5, 30, 3, 7, 31]
+id_custom_to_id_mc = [25, 1, 23, 12, 19, 5, 17, 2, 11, 22, 10, 20, 5, 13, 3, 30, 31, 7, 18]
+id_mc_to_id_custom = [1, 25, 12, 23, 5, 19, 2, 17, 22, 11, 20, 10, 13, 5, 30, 3, 7, 31]
 structure['VolumeInteger_mc'] = npi.remap(structure['VolumeInteger'],
                                id_custom_to_id_mc,
                                id_mc_to_id_custom)
@@ -49,4 +49,7 @@ for Path in input_path_list + [annotation_path]:
 
     annotation = remap_3D(annotation, id_custom_to_id_mc, id_mc_to_id_custom)
 
-    save_image(annotation, annotation_image, Path.split('.')[0]+'_mc.nii.gz')
+    print(Path)
+    output_path = Path.split('.')[0]+'_mc.nii.gz'
+    print(output_path)
+    save_image(annotation, annotation_image, output_path)
