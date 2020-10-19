@@ -12,8 +12,18 @@ data_path_list = glob.glob(os.path.join(data_path, '*'))
 ref_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
 ref_image = nib.load(ref_path)
 
-for Path in data_path_list:
+subject_list = list()
+genotype_list = list()
+nData = len(data_path_list)
+defField_magnitude_flirt = np.empty(shape=ref_image.shape+[nData])
+defField_magnitude_syn = np.empty(shape=ref_image.shape+[nData])
+for iData, Path in enumerate(data_path_list):
+    print(iData)
+    print(Path)
+
     subject = Path.split(os.sep)[-1]
+    subject_list.append(subject)
+    genotype_list.append(subject.split('_')[0])
     print(subject)
 
     # Define subject specific paths
@@ -45,6 +55,9 @@ for Path in data_path_list:
     defField_magnitude_image = nib.Nifti1Image(defField_magnitude, ref_image.affine)
     nib.save(defField_magnitude_image, defField_magnitude_path)
 
+    # Assign syn defFIeld_magnitude's to 4D array
+    defField_magnitude_flirt[:,:,:,iData] = defField_magnitude
+
 
 
     # Load SyN of subject and get inverse field
@@ -62,3 +75,10 @@ for Path in data_path_list:
     defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
     defField_magnitude_image = nib.Nifti1Image(defField_magnitude, ref_image.affine)
     nib.save(defField_magnitude_image, defField_magnitude_path)
+
+    # Assign syn defFIeld_magnitude's to 4D array
+    defField_magnitude_syn[:,:,:,iData] = defField_magnitude
+
+# Average defField magnitude per genotype
+
+# Get p-values
