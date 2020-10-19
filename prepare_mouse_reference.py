@@ -10,19 +10,22 @@ import numpy as np
 
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 allen_template_path = os.path.join(reference_path, 'average_template_25_reoriented.nii.gz')
-allen_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented.nii.gz')
-allen_structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
 allen_template_flirtedRigid_path = os.path.join(reference_path, 'average_template_25_reoriented_flirtedRigid.nii.gz')
 allen_template_flirted_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
 allen_template_flirtRigid_path = os.path.join(reference_path, 'average_template_25_reoriented_flirtRigid.mat')
 allen_template_flirt_path = os.path.join(reference_path, 'average_template_25_reoriented_flirt.mat')
 allen_template_flirted_synned_path = os.path.join(reference_path,
                                                   'average_template_25_reoriented_flirted_synned.nii.gz')
+
+allen_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented.nii.gz')
+allen_annotation_flirtedRigid_path = os.path.join(reference_path, 'annotation_25_reoriented_flirtedRigid.nii.gz')
+allen_annotation_flirted_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
+allen_annotation_flirted_synned_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
+
+allen_structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
 allen_template_flirted_syn_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn.pickle.gz')
 forw_field_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn_forw.nii.gz')
 back_field_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn_back.nii.gz')
-allen_annotation_flirted_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
-allen_annotation_flirted_synned_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
 AMBMC_template_path = os.path.join(reference_path, 'AMBMC_model.nii.gz')
 AMBMC_annotation_path_list = [os.path.join(reference_path, 'AMBMC', 'AMBMC-c57bl6-basalganglia-labels-15um.nii.gz'),
                               os.path.join(reference_path, 'AMBMC', 'AMBMC-c57bl6-cerebellum-labels-15um.nii.gz'),
