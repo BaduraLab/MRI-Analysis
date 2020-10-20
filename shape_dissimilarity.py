@@ -4,6 +4,7 @@ from compress_pickle import dump, load
 import numpy as np
 import os
 import glob
+from scipy.stats import ttest_ind
 
 # Define paths
 data_path = os.path.join('Data', 'Mouse', 'Processed')
@@ -80,5 +81,28 @@ for iData, Path in enumerate(data_path_list):
     defField_magnitude_syn[:,:,:,iData] = defField_magnitude
 
 # Average defField magnitude per genotype
+genotype_WT_logical = np.array([genotype == 'WT' for genotype in genotype_list])
+genotype_KO_logical = np.logical_not(genotype_WT_logical)
+defField_magnitude_flirt_meanWT = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_syn_meanWT = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_flirt_meanKO = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_syn_meanKO = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_flirt_pval = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_syn_pval = np.empty(defField_magnitude.shape[0:3])
+for i in range(defField_magnitude.shape[0]):
+    for j in range(defField_magnitude.shape[1]):
+        for k in range(defField_magnitude.shape[2]):
+            defField_magnitude_flirt_genotype = np.squeeze(defField_magnitude_flirt[i,j,k,:])
+            defField_magnitude_syn_genotype = np.squeeze(defField_magnitude_syn[i,j,k,:])
 
-# Get p-values
+            defField_magnitude_flirt_meanWT[i,j,k] = np.mean(defField_magnitude_flirt_genotype[genotype_WT_logical])
+            defField_magnitude_syn_meanWT[i,j,k]   = np.mean(defField_magnitude_syn_genotype[  genotype_WT_logical])
+            defField_magnitude_flirt_meanKO[i,j,k] = np.mean(defField_magnitude_flirt_genotype[genotype_KO_logical])
+            defField_magnitude_syn_meanKO[i,j,k]   = np.mean(defField_magnitude_syn_genotype[  genotype_KO_logical])
+
+            [_, defField_magnitude_flirt_pval[i,j,k]] = ttest_ind(defField_magnitude_flirt_genotype[genotype_WT_logical],
+                                                                  defField_magnitude_flirt_genotype[genotype_KO_logical],
+                                                                  equal_var=False)
+            [_, defField_magnitude_syn_pval[i,j,k]] = ttest_ind(defField_magnitude_syn_genotype[genotype_WT_logical],
+                                                                defField_magnitude_syn_genotype[genotype_KO_logical],
+                                                                equal_var=False)

@@ -123,8 +123,8 @@ def imageFLIRT2defField(image, flirt):
 
 
 # Function to zeropad 3D array
-def zeroPadImage(input_3D_numpy, padRatio):
-    nonzero_logical = np.where(input_3D_numpy > 0)
+def zeroPadImage(input_3D_numpy, input_3D_numpy_template, padRatio):
+    nonzero_logical = np.where(input_3D_numpy_template > 0)
     edgeMax = np.max(nonzero_logical, axis=1)
     edgeMin = np.min(nonzero_logical, axis=1)
     edgeMax = edgeMax+1
@@ -141,6 +141,7 @@ def zeroPadImage(input_3D_numpy, padRatio):
 
     # check whether amount of nonzero elements is still equal after cropping
     print((f'Original number of nonzero elemenets = {np.sum(input_3D_numpy>0)}'))
+    print((f'Template number of nonzero elemenets = {np.sum(input_3D_numpy_template>0)}'))
     print((f'Maximally cropped output number of nonzero elemenets = {np.sum(output>0)}'))
 
     output = np.pad(output,

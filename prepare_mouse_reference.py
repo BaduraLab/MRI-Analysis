@@ -69,7 +69,7 @@ print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
 # AMBMC zero padding
-AMBMC_template_zeropadded = zeroPadImage(AMBMC_template, 0.05)
+AMBMC_template_zeropadded = zeroPadImage(AMBMC_template, AMBMC_template, 0.075)
 AMBMC_template_zeropadded_image = nib.Nifti1Image(AMBMC_template_zeropadded, AMBMC_template_image.affine)
 AMBMC_template_zeropadded_path = AMBMC_template_path.split('.')[0]+'_zeropadded.nii.gz'
 print(AMBMC_template_zeropadded_path)
@@ -93,6 +93,13 @@ os.system('flirt -in ' + allen_template_path + ' \
                  -verbose 0')
 allen_template_flirted_image = nib.load(allen_template_flirted_path)
 allen_template_flirted = allen_template_flirted_image.get_fdata()
+
+# allen template flirted cropping
+allen_template_flirted_cropped = zeroPadImage(allen_template_flirted, allen_template_flirted, 0.1)
+allen_template_flirted_cropped_image = nib.Nifti1Image(allen_template_flirted_cropped, allen_template_flirted_image.affine)
+allen_template_flirted_cropped_path = allen_template_flirted_path.split('.')[0]+'_cropped.nii.gz'
+print(allen_template_flirted_cropped_path)
+nib.save(allen_template_flirted_cropped_image, allen_template_flirted_cropped_path)
 
 # SyN flirted images to AMBMC
 print('SyN')
@@ -147,6 +154,13 @@ os.system('flirt -in ' + allen_annotation_flirtedRigid_path + ' \
                  -verbose 0')
 allen_annotation_flirted_image = nib.load(allen_annotation_flirted_path)
 allen_annotation_flirted = allen_annotation_flirted_image.get_fdata()
+
+# allen template flirted cropping
+allen_annotation_flirted_cropped = zeroPadImage(allen_annotation_flirted, allen_template_flirted, 0.1)
+allen_annotation_flirted_cropped_image = nib.Nifti1Image(allen_annotation_flirted_cropped, allen_annotation_flirted_image.affine)
+allen_annotation_flirted_cropped_path = allen_annotation_flirted_path.split('.')[0]+'_cropped.nii.gz'
+print(allen_annotation_flirted_cropped_path)
+nib.save(allen_annotation_flirted_cropped_image, allen_annotation_flirted_cropped_path)
 
 # SyN flirted allen annotation to AMBMC
 allen_annotation_flirted_synned = mapping.transform(allen_annotation_flirted)
