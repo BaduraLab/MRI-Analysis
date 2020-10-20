@@ -8,6 +8,7 @@ from dipy.align.metrics import CCMetric
 from compress_pickle import dump, load
 import numpy as np
 from functions import zeroPadImage
+from functions import save_image
 
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 allen_template_path = os.path.join(reference_path, 'average_template_25_reoriented.nii.gz')
@@ -68,12 +69,16 @@ print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
 # AMBMC zero padding
-AMBMC_template = zeroPadImage(AMBMC_template, 0.2)
+AMBMC_template_zeropadded = zeroPadImage(AMBMC_template, 0.05)
+AMBMC_template_zeropadded_image = nib.Nifti1Image(AMBMC_template_zeropadded, AMBMC_template_image.affine)
+AMBMC_template_zeropadded_path = AMBMC_template_path.split('.')[0]+'_zeropadded.nii.gz'
+print(AMBMC_template_zeropadded_path)
+nib.save(AMBMC_template_zeropadded_image, AMBMC_template_zeropadded_path)
 
 # FLIRT subject to reference
 print('FLIRT rigid start')
 os.system('flirt -in ' + allen_template_path + ' \
-                 -ref ' + AMBMC_template_path + ' \
+                 -ref ' + AMBMC_template_zeropadded_path + ' \
                  -out ' + allen_template_flirtedRigid_path + ' \
                  -omat ' + allen_template_flirtRigid_path + ' \
                  -dof ' + '6' + ' \
@@ -82,7 +87,7 @@ os.system('flirt -in ' + allen_template_path + ' \
 # FLIRT allen to AMBMC
 print('FLIRT affine start')
 os.system('flirt -in ' + allen_template_path + ' \
-                 -ref ' + AMBMC_template_path + ' \
+                 -ref ' + AMBMC_template_zeropadded_path + ' \
                  -out ' + allen_template_flirted_path + ' \
                  -omat ' + allen_template_flirt_path + ' \
                  -verbose 0')
@@ -94,9 +99,9 @@ print('SyN')
 metric = CCMetric(3)
 level_iters = [10, 10, 5, 5, 5]
 sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
-mapping = sdr.optimize(static=AMBMC_template,
+mapping = sdr.optimize(static=AMBMC_template_zeropadded,
                        moving=allen_template_flirted,
-                       static_grid2world=AMBMC_template_image.get_qform(),
+                       static_grid2world=AMBMC_template_zeropadded_image.get_qform(),
                        moving_grid2world=allen_template_flirted_image.get_qform())
 with open(allen_template_flirted_syn_path, 'wb') as f:
     dump([mapping, metric, level_iters, sdr], f, protocol=4, compression='gzip')
@@ -126,7 +131,7 @@ nib.save(mouse_masked_flirted_synned_image, allen_template_flirted_synned_path)
 
 # FLIRT (rigid) allen annotation to AMBMC
 os.system('flirt -in ' + allen_annotation_path + ' \
-                 -ref ' + AMBMC_template_path + ' \
+                 -ref ' + AMBMC_template_zeropadded_path + ' \
                  -out ' + allen_annotation_flirtedRigid_path + ' \
                  -init ' + allen_template_flirtRigid_path + ' \
                  -dof ' + '6' + ' \
@@ -135,7 +140,7 @@ os.system('flirt -in ' + allen_annotation_path + ' \
 
 # FLIRT (affine) allen annotation to AMBMC
 os.system('flirt -in ' + allen_annotation_flirtedRigid_path + ' \
-                 -ref ' + AMBMC_template_path + ' \
+                 -ref ' + AMBMC_template_zeropadded_path + ' \
                  -out ' + allen_annotation_flirted_path + ' \
                  -init ' + allen_template_flirt_path + ' \
                  -applyxfm' + ' \

@@ -139,10 +139,15 @@ def zeroPadImage(input_3D_numpy, padRatio):
 
     output = input_3D_numpy[edgeMin[0]:edgeMax[0], edgeMin[1]:edgeMax[1], edgeMin[2]:edgeMax[2]]
 
+    # check whether amount of nonzero elements is still equal after cropping
+    print((f'Original number of nonzero elemenets = {np.sum(input_3D_numpy>0)}'))
+    print((f'Maximally cropped output number of nonzero elemenets = {np.sum(output>0)}'))
+
     output = np.pad(output,
                     ((padLength, padLength),
                      (padLength, padLength),
                      (padLength, padLength)),
                     'constant')
+    print((f'Zero padded output number of nonzero elemenets = {np.sum(output>0)}'))
 
     return output
