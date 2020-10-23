@@ -23,9 +23,23 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # average_template_50_to_AMBMC_flirted.nii.gz
 # reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
 # reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
-reference_template_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
-reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
+reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_cropped.nii.gz')
+reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_cropped.nii.gz')
+structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
 
+# Get list of structure present in annotation, for each structure that is present isolate itself and whatever path is below it
+reference_annotation_image = nib.load(reference_annotation_path)
+reference_annotation = reference_annotation_image.get_fdata()
+[reference_VolumeInteger, reference_VoxelNumber] = np.unique(np.int64(np.round(reference_annotation)),
+                                                             return_counts=True)
+# merge structure and volume tables
+# tak
+mouse_table_reference = pd.DataFrame(
+    {'Mouse': 'allen', 'VolumeInteger': mouse_volume_integer, 'VoxelNumber': mouse_voxel_number,
+     'Volume': mouse_volume})
+structure_name_list = ['asd', 'asd', 'asd']
+
+# Loop through structures
 # Loop through mice
 for iMousePath, MousePath in enumerate(mouse_path_list):
     print(iMousePath)

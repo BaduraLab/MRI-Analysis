@@ -11,23 +11,24 @@ from functions import zeroPadImage
 from functions import save_image
 
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
-allen_template_path = os.path.join(reference_path, 'average_template_25_reoriented.nii.gz')
-allen_template_flirtedRigid_path = os.path.join(reference_path, 'average_template_25_reoriented_flirtedRigid.nii.gz')
-allen_template_flirted_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
-allen_template_flirtRigid_path = os.path.join(reference_path, 'average_template_25_reoriented_flirtRigid.mat')
-allen_template_flirt_path = os.path.join(reference_path, 'average_template_25_reoriented_flirt.mat')
+allen_template_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
+allen_template_flirtedRigid_path = os.path.join(reference_path, 'average_template_50_reoriented_flirtedRigid.nii.gz')
+allen_template_flirted_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted.nii.gz')
+allen_template_flirtRigid_path = os.path.join(reference_path, 'average_template_50_reoriented_flirtRigid.mat')
+allen_template_flirt_path = os.path.join(reference_path, 'average_template_50_reoriented_flirt.mat')
 allen_template_flirted_synned_path = os.path.join(reference_path,
-                                                  'average_template_25_reoriented_flirted_synned.nii.gz')
+                                                  'average_template_50_reoriented_flirted_synned.nii.gz')
+voxel_size = [0.05, 0.05, 0.05]
 
-allen_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented.nii.gz')
-allen_annotation_flirtedRigid_path = os.path.join(reference_path, 'annotation_25_reoriented_flirtedRigid.nii.gz')
-allen_annotation_flirted_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
-allen_annotation_flirted_synned_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_synned.nii.gz')
+allen_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
+allen_annotation_flirtedRigid_path = os.path.join(reference_path, 'annotation_50_reoriented_flirtedRigid.nii.gz')
+allen_annotation_flirted_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted.nii.gz')
+allen_annotation_flirted_synned_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_synned.nii.gz')
 
 allen_structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
-allen_template_flirted_syn_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn.pickle.gz')
-forw_field_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn_forw.nii.gz')
-back_field_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_syn_back.nii.gz')
+allen_template_flirted_syn_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_syn.pickle.gz')
+forw_field_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_syn_forw.nii.gz')
+back_field_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_syn_back.nii.gz')
 AMBMC_template_path = os.path.join(reference_path, 'AMBMC_model.nii.gz')
 AMBMC_annotation_path_list = [os.path.join(reference_path, 'AMBMC', 'AMBMC-c57bl6-basalganglia-labels-15um.nii.gz'),
                               os.path.join(reference_path, 'AMBMC', 'AMBMC-c57bl6-cerebellum-labels-15um.nii.gz'),
@@ -54,8 +55,7 @@ for Path in [AMBMC_template_path] + AMBMC_annotation_path_list:
     output_path = Path.split('.')[0] + '_reoriented.nii.gz'
     nib.save(output_image, Path.split('.')[0] + '_reoriented.nii.gz')
 
-    output_resampled_path = Path.split('.')[0] + '_25_reoriented.nii.gz'
-    voxel_size = [0.025, 0.025, 0.025]
+    output_resampled_path = Path.split('.')[0] + '_50_reoriented.nii.gz'
 
     output_resampled_image = nib_processing.resample_to_output(output_image, voxel_size)
     nib.save(output_resampled_image, output_resampled_path)
@@ -69,7 +69,7 @@ print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
 # AMBMC zero padding
-AMBMC_template_zeropadded = zeroPadImage(AMBMC_template, AMBMC_template, 0.1)
+AMBMC_template_zeropadded, crop_index = zeroPadImage(AMBMC_template, AMBMC_template, 0.1)
 AMBMC_template_zeropadded_image = nib.Nifti1Image(AMBMC_template_zeropadded, AMBMC_template_image.affine)
 AMBMC_template_zeropadded_path = AMBMC_template_path.split('.')[0]+'_zeropadded.nii.gz'
 print(AMBMC_template_zeropadded_path)
@@ -95,7 +95,7 @@ allen_template_flirted_image = nib.load(allen_template_flirted_path)
 allen_template_flirted = allen_template_flirted_image.get_fdata()
 
 # allen template flirted cropping
-allen_template_flirted_cropped = zeroPadImage(allen_template_flirted, allen_template_flirted, 0.1)
+allen_template_flirted_cropped, crop_index = zeroPadImage(allen_template_flirted, allen_template_flirted, 0.1)
 allen_template_flirted_cropped_image = nib.Nifti1Image(allen_template_flirted_cropped, allen_template_flirted_image.affine)
 allen_template_flirted_cropped_path = allen_template_flirted_path.split('.')[0]+'_cropped.nii.gz'
 print(allen_template_flirted_cropped_path)
@@ -156,7 +156,7 @@ allen_annotation_flirted_image = nib.load(allen_annotation_flirted_path)
 allen_annotation_flirted = allen_annotation_flirted_image.get_fdata()
 
 # allen template flirted cropping
-allen_annotation_flirted_cropped = zeroPadImage(allen_annotation_flirted, allen_template_flirted, 0.1)
+allen_annotation_flirted_cropped, crop_index = zeroPadImage(allen_annotation_flirted, allen_template_flirted, 0.1)
 allen_annotation_flirted_cropped_image = nib.Nifti1Image(allen_annotation_flirted_cropped, allen_annotation_flirted_image.affine)
 allen_annotation_flirted_cropped_path = allen_annotation_flirted_path.split('.')[0]+'_cropped.nii.gz'
 print(allen_annotation_flirted_cropped_path)
