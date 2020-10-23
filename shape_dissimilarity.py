@@ -32,6 +32,8 @@ for iData, Path in enumerate(data_path_list):
     flirtRigid_path = os.path.join(Path, subject + '_flirtRigid.mat')
     flirt_path = os.path.join(Path, subject + '_flirt.mat')
     invflirt_path = os.path.join(Path, subject + '_invflirt.mat')
+    flirtRigid_path = os.path.join(Path, subject + '_flirtRigid.mat')
+    invflirtRigid_path = os.path.join(Path, subject + '_invflirtRigid.mat')
     defField_path = os.path.join(Path, subject + '_flirt_defField.nii.gz')
     defField_magnitude_path = os.path.join(Path, subject + '_flirt_defField_magnitude.nii.gz')
 
@@ -45,6 +47,14 @@ for iData, Path in enumerate(data_path_list):
         txt = f.read()
         invflirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
     print(invflirt)
+    with open(flirtRigid_path, 'r') as f:
+        txt = f.read()
+        flirtRigid = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+    print(flirtRigid)
+    with open(invflirtRigid_path, 'r') as f:
+        txt = f.read()
+        invflirtRigid = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+    print(invflirtRigid)
 
     # Calculate inverse flirt and check whether it matches with read inverse flirt
 

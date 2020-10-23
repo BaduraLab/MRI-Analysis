@@ -56,8 +56,8 @@ for iPath in input_path_list_list[0]:
     X, Y, Z = np.mgrid[0:automatic_image.shape[0]:1, 0:automatic_image.shape[1]:1, 0:automatic_image.shape[2]:1]
 
     # Logicals
-    automatic_logical = automatic > 0
-    manual_logical = manual > 0
+    automatic_logical = np.isin(automatic, np.arange(28)+1)
+    manual_logical = np.isin(manual, np.arange(28)+1)
     tree_logical = np.logical_and(manual_logical,
                                  automatic_logical)  # no manual annotation, but there is automatic annotation - add
     add_logical = np.logical_and(np.logical_not(manual_logical),
@@ -94,7 +94,8 @@ for iPath in input_path_list_list[0]:
                     break
 
     # Remove points which are not marked in cerebellar mask (_1)
-    adjusted = adjusted * automatic_logical
+    remove_logical = np.logical_and(np.logical_not(automatic_logical), manual_logical)
+    adjusted[remove_logical] = 0
 
     # Save adjusted image
     adjusted = np.round(adjusted).astype(int)

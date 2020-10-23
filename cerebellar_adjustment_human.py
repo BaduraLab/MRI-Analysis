@@ -64,8 +64,8 @@ for iPath in input_path_list_list[0]:
     X, Y, Z = np.mgrid[0:automatic_image.shape[0]:1, 0:automatic_image.shape[1]:1, 0:automatic_image.shape[2]:1]
 
     # Logicals
-    orsuit_automatic_logical = automatic > 0
-    manual_logical = manual > 0
+    orsuit_automatic_logical = np.isin(automatic, np.arange(28)+1)
+    manual_logical = np.isin(manual, np.arange(28)+1)
     suit_add_logical = np.logical_and(np.logical_not(orsuit_automatic_logical),
                                       manual_logical)  # no automatic annotation, but there is manual annotation - add
     suit_remove_logical = np.logical_and(np.logical_not(manual_logical),
