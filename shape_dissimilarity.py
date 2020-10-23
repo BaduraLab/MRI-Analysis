@@ -16,6 +16,7 @@ ref_image = nib.load(ref_path)
 subject_list = list()
 genotype_list = list()
 nData = len(data_path_list)
+defField_magnitude_flirtRigid = np.empty(list(ref_image.shape)+[nData])
 defField_magnitude_flirt = np.empty(list(ref_image.shape)+[nData])
 defField_magnitude_syn = np.empty(list(ref_image.shape)+[nData])
 for iData, Path in enumerate(data_path_list):
@@ -34,17 +35,13 @@ for iData, Path in enumerate(data_path_list):
     invflirt_path = os.path.join(Path, subject + '_invflirt.mat')
     flirtRigid_path = os.path.join(Path, subject + '_flirtRigid.mat')
     invflirtRigid_path = os.path.join(Path, subject + '_invflirtRigid.mat')
-    defField_path = os.path.join(Path, subject + '_flirt_defField.nii.gz')
-    defField_magnitude_path = os.path.join(Path, subject + '_flirt_defField_magnitude.nii.gz')
+    syn_path = os.path.join(Path, subject + '_flirted_syn.pickle.gz')
 
-    with open(flirt_path, 'r') as f:
-        txt = f.read()
-        flirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
-    print(flirt)
-    with open(invflirt_path, 'r') as f:
-        txt = f.read()
-        invflirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
-    print(invflirt)
+
+
+    # rigid flirt vector field and magnitude
+    defField_path = os.path.join(Path, subject + '_flirtRigid_defField.nii.gz')
+    defField_magnitude_path = os.path.join(Path, subject + '_flirtRigid_defField_magnitude.nii.gz')
     with open(flirtRigid_path, 'r') as f:
         txt = f.read()
         flirtRigid = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
@@ -53,29 +50,47 @@ for iData, Path in enumerate(data_path_list):
         txt = f.read()
         invflirtRigid = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
     print(invflirtRigid)
+    defField = imageFLIRT2defField(ref_image, invflirtRigid)
+    defField_image = nib.Nifti1Image(defField, ref_image.affine)
+    nib.save(defField_image, defField_path)
+    defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
+    defField_magnitude_image = nib.Nifti1Image(defField_magnitude, ref_image.affine)
+    nib.save(defField_magnitude_image, defField_magnitude_path)
+    defField_magnitude_flirtRigid[:,:,:,iData] = defField_magnitude # Assign syn defField_magnitude's to 4D array
 
-    # Calculate inverse flirt and check whether it matches with read inverse flirt
 
-    #
+    # affine flirt vector field and magnitude
+    defField_path = os.path.join(Path, subject + '_flirt_defField.nii.gz')
+    defField_magnitude_path = os.path.join(Path, subject + '_flirt_defField_magnitude.nii.gz')
+    with open(flirt_path, 'r') as f:
+        txt = f.read()
+        flirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+    print(flirt)
+    with open(invflirt_path, 'r') as f:
+        txt = f.read()
+        invflirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+    print(invflirt)
     defField = imageFLIRT2defField(ref_image, invflirt)
     defField_image = nib.Nifti1Image(defField, ref_image.affine)
     nib.save(defField_image, defField_path)
     defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
     defField_magnitude_image = nib.Nifti1Image(defField_magnitude, ref_image.affine)
     nib.save(defField_magnitude_image, defField_magnitude_path)
-
-    # Assign syn defFIeld_magnitude's to 4D array
-    defField_magnitude_flirt[:,:,:,iData] = defField_magnitude
+    defField_magnitude_flirt[:,:,:,iData] = defField_magnitude # Assign syn defField_magnitude's to 4D array
 
 
 
-    # Load SyN of subject and get inverse field
+    # Calculate inverse flirt's and check whether it matches with read inverse flirt's
+
+
+
+    # SyN vector field and magnitude
     defField_path = os.path.join(Path, subject + '_flirted_syn_defField.nii.gz')
     defField_magnitude_path = os.path.join(Path, subject + '_flirted_syn_defField_magnitude.nii.gz')
-    syn_path = os.path.join(Path, subject + '_flirted_syn.pickle.gz')
+
+    # Load SyN of subject and get inverse field
     with open(syn_path, 'rb') as f:
         [mapping, metric, level_iters, sdr] = load(f, compression='gzip')
-
     defField = mapping.get_backward_field()
     del mapping, metric, level_iters, sdr
 
@@ -84,9 +99,7 @@ for iData, Path in enumerate(data_path_list):
     defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
     defField_magnitude_image = nib.Nifti1Image(defField_magnitude, ref_image.affine)
     nib.save(defField_magnitude_image, defField_magnitude_path)
-
-    # Assign syn defFIeld_magnitude's to 4D array
-    defField_magnitude_syn[:,:,:,iData] = defField_magnitude
+    defField_magnitude_syn[:,:,:,iData] = defField_magnitude # Assign syn defFIeld_magnitude's to 4D array
 
 # Average defField magnitude per genotype
 genotype_WT_logical = np.array([genotype == 'WT' for genotype in genotype_list])
