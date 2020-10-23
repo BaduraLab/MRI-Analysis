@@ -23,8 +23,8 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # average_template_50_to_AMBMC_flirted.nii.gz
 # reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented.nii.gz')
 # reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
-reference_template_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted.nii.gz')
-reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
+reference_template_path = os.path.join(reference_path, 'average_template_25_reoriented_flirted_cropped.nii.gz')
+reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_cropped.nii.gz')
 
 # Loop through mice
 for iMousePath, MousePath in enumerate(mouse_path_list):
@@ -44,9 +44,11 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_flirt_path = os.path.join(MousePath, mouse_string + '_flirt.mat')
     mouse_masked_flirted_syn_path = os.path.join(MousePath, mouse_string + '_flirted_syn.pickle.gz')
     mouse_masked_invflirt_path = os.path.join(MousePath, mouse_string + '_invflirt.mat')
+    mouse_masked_invflirtRigid_path = os.path.join(MousePath, mouse_string + '_invflirtRigid.mat')
     mouse_masked_flirted_synned_path = os.path.join(MousePath, mouse_string + '_flirted_synned.nii.gz')
     reference_annotation_invsynned_path = os.path.join(MousePath, mouse_string + '_annotation_flirted.nii.gz')
-    reference_annotation_invsynned_invflirted_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
+    reference_annotation_invsynned_invflirted_path = os.path.join(MousePath, mouse_string + '_annotation_flirtedRigid.nii.gz')
+    reference_annotation_invsynned_invflirted_invflirtedRigid_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
     forw_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
     back_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
 
@@ -68,18 +70,18 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_masked_image = nib.Nifti1Image(mouse_masked, mouse_image.affine, mouse_image.header)
     nib.save(mouse_masked_image, mouse_masked_path)
 
-    # # FLIRT subject to reference
-    # print('FLIRT rigid start')
-    # os.system('flirt -in ' + mouse_masked_path + ' \
-    #                  -ref ' + reference_template_path + ' \
-    #                  -out ' + mouse_masked_flirtedRigid_path + ' \
-    #                  -omat ' + mouse_masked_flirtRigid_path + ' \
-    #                  -dof ' + '6' + ' \
-    #                  -verbose 0')    # FLIRT subject to reference
+    # FLIRT subject to reference
+    print('FLIRT rigid start')
+    os.system('flirt -in ' + mouse_masked_path + ' \
+                     -ref ' + reference_template_path + ' \
+                     -out ' + mouse_masked_flirtedRigid_path + ' \
+                     -omat ' + mouse_masked_flirtRigid_path + ' \
+                     -dof ' + '6' + ' \
+                     -verbose 0')    # FLIRT subject to reference
 
     # FLIRT rigidly transformed subject to reference
     print('FLIRT affine start')
-    os.system('flirt -in ' + mouse_masked_path + ' \
+    os.system('flirt -in ' + mouse_masked_flirtedRigid_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + mouse_masked_flirted_path + ' \
                      -omat ' + mouse_masked_flirt_path + ' \
@@ -131,13 +133,24 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
                                                            mouse_masked_flirted_image.header)
     nib.save(reference_annotation_invsynned_image, reference_annotation_invsynned_path)
 
-    # inflirt invsynned annotation to flirted image to get annotation of original image
-    print('inverse FLIRT')
+    # invflirt invsynned annotation to flirted image to get annotation of original image
+    print('inverse affine FLIRT')
     os.system('convert_xfm -omat '+mouse_masked_invflirt_path+' -inverse '+mouse_masked_flirt_path)
     os.system('flirt -in ' + reference_annotation_invsynned_path + ' \
                      -ref ' + mouse_path + ' \
                      -out ' + reference_annotation_invsynned_invflirted_path + ' \
                      -init ' + mouse_masked_invflirt_path + ' \
+                     -applyxfm \
+                     -interp nearestneighbour \
+                     -verbose 1')
+
+    # invflirt invsynned annotation to flirted image to get annotation of original image
+    print('inverse rigid FLIRT')
+    os.system('convert_xfm -omat '+mouse_masked_invflirtRigid_path+' -inverse '+mouse_masked_flirtRigid_path)
+    os.system('flirt -in ' + reference_annotation_invsynned_invflirted_path + ' \
+                     -ref ' + mouse_path + ' \
+                     -out ' + reference_annotation_invsynned_invflirted_invflirtedRigid_path + ' \
+                     -init ' + mouse_masked_invflirtRigid_path + ' \
                      -applyxfm \
                      -interp nearestneighbour \
                      -verbose 1')
