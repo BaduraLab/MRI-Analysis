@@ -26,6 +26,7 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_cropped.nii.gz')
 reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_cropped.nii.gz')
 structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
+pd.read_csv(structure_path)
 
 # Get list of structure present in annotation, for each structure that is present isolate itself and whatever path is below it
 reference_annotation_image = nib.load(reference_annotation_path)

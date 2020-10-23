@@ -159,5 +159,6 @@ def zeroPadImage(input_3D_numpy, input_3D_numpy_template, padRatio):
     print((f'Zero padded output number of nonzero elements = {np.sum(output>0)}'))
 
     crop_index = edgeMin - padLength
+    print((f'Crop index = {crop_index}'))
 
     return output, crop_index
