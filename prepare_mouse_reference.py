@@ -69,7 +69,7 @@ print(nib.aff2axcodes(AMBMC_template_image.affine))
 AMBMC_template = AMBMC_template_image.get_fdata()
 
 # AMBMC zero padding
-AMBMC_template_zeropadded = zeroPadImage(AMBMC_template, AMBMC_template, 0.075)
+AMBMC_template_zeropadded = zeroPadImage(AMBMC_template, AMBMC_template, 0.1)
 AMBMC_template_zeropadded_image = nib.Nifti1Image(AMBMC_template_zeropadded, AMBMC_template_image.affine)
 AMBMC_template_zeropadded_path = AMBMC_template_path.split('.')[0]+'_zeropadded.nii.gz'
 print(AMBMC_template_zeropadded_path)
@@ -86,7 +86,7 @@ os.system('flirt -in ' + allen_template_path + ' \
 
 # FLIRT allen to AMBMC
 print('FLIRT affine start')
-os.system('flirt -in ' + allen_template_path + ' \
+os.system('flirt -in ' + allen_template_flirtedRigid_path + ' \
                  -ref ' + AMBMC_template_zeropadded_path + ' \
                  -out ' + allen_template_flirted_path + ' \
                  -omat ' + allen_template_flirt_path + ' \

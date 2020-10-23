@@ -10,14 +10,14 @@ from scipy.stats import ttest_ind
 data_path = os.path.join('Data', 'Mouse', 'Processed')
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 data_path_list = glob.glob(os.path.join(data_path, '*'))
-ref_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted.nii.gz')
+ref_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_cropped.nii.gz')
 ref_image = nib.load(ref_path)
 
 subject_list = list()
 genotype_list = list()
 nData = len(data_path_list)
-defField_magnitude_flirt = np.empty(shape=ref_image.shape+[nData])
-defField_magnitude_syn = np.empty(shape=ref_image.shape+[nData])
+defField_magnitude_flirt = np.empty(list(ref_image.shape)+[nData])
+defField_magnitude_syn = np.empty(list(ref_image.shape)+[nData])
 for iData, Path in enumerate(data_path_list):
     print(iData)
     print(Path)
@@ -36,8 +36,6 @@ for iData, Path in enumerate(data_path_list):
     invflirtRigid_path = os.path.join(Path, subject + '_invflirtRigid.mat')
     defField_path = os.path.join(Path, subject + '_flirt_defField.nii.gz')
     defField_magnitude_path = os.path.join(Path, subject + '_flirt_defField_magnitude.nii.gz')
-
-    or_image = nib.load(or_path)
 
     with open(flirt_path, 'r') as f:
         txt = f.read()
