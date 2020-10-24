@@ -143,6 +143,7 @@ os.system('flirt -in ' + allen_annotation_path + ' \
                  -init ' + allen_template_flirtRigid_path + ' \
                  -dof ' + '6' + ' \
                  -applyxfm' + ' \
+                 -interp ' + 'nearestneighbour' + ' \
                  -verbose 0')
 
 # FLIRT (affine) allen annotation to AMBMC
@@ -151,6 +152,7 @@ os.system('flirt -in ' + allen_annotation_flirtedRigid_path + ' \
                  -out ' + allen_annotation_flirted_path + ' \
                  -init ' + allen_template_flirt_path + ' \
                  -applyxfm' + ' \
+                 -interp ' + 'nearestneighbour' + ' \
                  -verbose 0')
 allen_annotation_flirted_image = nib.load(allen_annotation_flirted_path)
 allen_annotation_flirted = allen_annotation_flirted_image.get_fdata()
@@ -163,7 +165,7 @@ print(allen_annotation_flirted_cropped_path)
 nib.save(allen_annotation_flirted_cropped_image, allen_annotation_flirted_cropped_path)
 
 # SyN flirted allen annotation to AMBMC
-allen_annotation_flirted_synned = mapping.transform(allen_annotation_flirted)
+allen_annotation_flirted_synned = mapping.transform(allen_annotation_flirted, interpolation='nearest')
 allen_annotation_flirted_synned_image = nib.Nifti1Image(allen_annotation_flirted_synned,
                                                         allen_annotation_flirted_image.affine,
                                                         allen_annotation_flirted_image.header)

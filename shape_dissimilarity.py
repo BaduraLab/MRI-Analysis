@@ -10,7 +10,7 @@ from scipy.stats import ttest_ind
 data_path = os.path.join('Data', 'Mouse', 'Processed')
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 data_path_list = glob.glob(os.path.join(data_path, '*'))
-ref_path = os.path.join(reference_path, 'annotation_25_reoriented_flirted_cropped.nii.gz')
+ref_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_cropped.nii.gz')
 ref_image = nib.load(ref_path)
 
 subject_list = list()
@@ -104,26 +104,68 @@ for iData, Path in enumerate(data_path_list):
 # Average defField magnitude per genotype
 genotype_WT_logical = np.array([genotype == 'WT' for genotype in genotype_list])
 genotype_KO_logical = np.logical_not(genotype_WT_logical)
+defField_magnitude_flirtRigid_meanWT = np.empty(defField_magnitude.shape[0:3])
 defField_magnitude_flirt_meanWT = np.empty(defField_magnitude.shape[0:3])
 defField_magnitude_syn_meanWT = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_flirtRigid_meanKO = np.empty(defField_magnitude.shape[0:3])
 defField_magnitude_flirt_meanKO = np.empty(defField_magnitude.shape[0:3])
 defField_magnitude_syn_meanKO = np.empty(defField_magnitude.shape[0:3])
+defField_magnitude_flirtRigid_pval = np.empty(defField_magnitude.shape[0:3])
 defField_magnitude_flirt_pval = np.empty(defField_magnitude.shape[0:3])
 defField_magnitude_syn_pval = np.empty(defField_magnitude.shape[0:3])
 for i in range(defField_magnitude.shape[0]):
     for j in range(defField_magnitude.shape[1]):
         for k in range(defField_magnitude.shape[2]):
+            defField_magnitude_flirtRigid_genotype = np.squeeze(defField_magnitude_flirtRigid[i,j,k,:])
             defField_magnitude_flirt_genotype = np.squeeze(defField_magnitude_flirt[i,j,k,:])
             defField_magnitude_syn_genotype = np.squeeze(defField_magnitude_syn[i,j,k,:])
 
+            defField_magnitude_flirtRigid_meanWT[i,j,k] = np.mean(defField_magnitude_flirtRigid_genotype[genotype_WT_logical])
             defField_magnitude_flirt_meanWT[i,j,k] = np.mean(defField_magnitude_flirt_genotype[genotype_WT_logical])
             defField_magnitude_syn_meanWT[i,j,k]   = np.mean(defField_magnitude_syn_genotype[  genotype_WT_logical])
+            defField_magnitude_flirtRigid_meanKO[i,j,k] = np.mean(defField_magnitude_flirtRigid_genotype[genotype_KO_logical])
             defField_magnitude_flirt_meanKO[i,j,k] = np.mean(defField_magnitude_flirt_genotype[genotype_KO_logical])
             defField_magnitude_syn_meanKO[i,j,k]   = np.mean(defField_magnitude_syn_genotype[  genotype_KO_logical])
 
+            [_, defField_magnitude_flirtRigid_pval[i,j,k]] = ttest_ind(defField_magnitude_flirtRigid_genotype[genotype_WT_logical],
+                                                                      defField_magnitude_flirtRigid_genotype[genotype_KO_logical],
+                                                                      equal_var=False)
             [_, defField_magnitude_flirt_pval[i,j,k]] = ttest_ind(defField_magnitude_flirt_genotype[genotype_WT_logical],
                                                                   defField_magnitude_flirt_genotype[genotype_KO_logical],
                                                                   equal_var=False)
             [_, defField_magnitude_syn_pval[i,j,k]] = ttest_ind(defField_magnitude_syn_genotype[genotype_WT_logical],
                                                                 defField_magnitude_syn_genotype[genotype_KO_logical],
                                                                 equal_var=False)
+
+# Save flirtRigid
+defField_magnitude_meanWT_path = os.path.join(Path, subject + '_flirtRigid_defField_magnitude_meanWT.nii.gz')
+defField_magnitude_meanKO_path = os.path.join(Path, subject + '_flirtRigid_defField_magnitude_meanKO.nii.gz')
+defField_magnitude_pval_path = os.path.join(Path, subject + '_flirtRigid_defField_magnitude_pval.nii.gz')
+defField_image = nib.Nifti1Image(defField_magnitude_flirtRigid_meanWT, ref_image.affine)
+nib.save(defField_image, defField_magnitude_meanWT_path)
+defField_image = nib.Nifti1Image(defField_magnitude_flirtRigid_meanKO, ref_image.affine)
+nib.save(defField_image, defField_magnitude_meanKO_path)
+defField_image = nib.Nifti1Image(defField_magnitude_flirtRigid_pval, ref_image.affine)
+nib.save(defField_image, defField_magnitude_pval_path)
+
+# Save flirt
+defField_magnitude_meanWT_path = os.path.join(Path, subject + '_flirt_defField_magnitude_meanWT.nii.gz')
+defField_magnitude_meanKO_path = os.path.join(Path, subject + '_flirt_defField_magnitude_meanKO.nii.gz')
+defField_magnitude_pval_path = os.path.join(Path, subject + '_flirt_defField_magnitude_pval.nii.gz')
+defField_image = nib.Nifti1Image(defField_magnitude_flirt_meanWT, ref_image.affine)
+nib.save(defField_image, defField_magnitude_meanWT_path)
+defField_image = nib.Nifti1Image(defField_magnitude_flirt_meanKO, ref_image.affine)
+nib.save(defField_image, defField_magnitude_meanKO_path)
+defField_image = nib.Nifti1Image(defField_magnitude_flirt_pval, ref_image.affine)
+nib.save(defField_image, defField_magnitude_pval_path)
+
+# Save syn
+defField_magnitude_meanWT_path = os.path.join(Path, subject + '_syn_defField_magnitude_meanWT.nii.gz')
+defField_magnitude_meanKO_path = os.path.join(Path, subject + '_syn_defField_magnitude_meanKO.nii.gz')
+defField_magnitude_pval_path = os.path.join(Path, subject + '_syn_defField_magnitude_pval.nii.gz')
+defField_image = nib.Nifti1Image(defField_magnitude_syn_meanWT, ref_image.affine)
+nib.save(defField_image, defField_magnitude_meanWT_path)
+defField_image = nib.Nifti1Image(defField_magnitude_syn_meanKO, ref_image.affine)
+nib.save(defField_image, defField_magnitude_meanKO_path)
+defField_image = nib.Nifti1Image(defField_magnitude_syn_pval, ref_image.affine)
+nib.save(defField_image, defField_magnitude_pval_path)

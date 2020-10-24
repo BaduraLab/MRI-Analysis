@@ -25,8 +25,16 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_cropped.nii.gz')
 reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_cropped.nii.gz')
+reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
-pd.read_csv(structure_path)
+structure = pd.read_csv(structure_path)
+
+# reference_table['in_cerebellum'] = False
+# for iVolume in range(reference_table.shape[0]):
+#     if isinstance(reference_table.loc[iVolume, 'structure_id_path'], str):
+#         reference_table.loc[iVolume, 'in_cerebellum'] = 512 in list(map(int, reference_table.loc[iVolume, 'structure_id_path'].strip('][').split(', ')))
+# reference_cerebellum_table = reference_table[reference_table['in_cerebellum']][['name', 'acronym', 'id', 'structure_id_path', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
+# reference_cerebellum_table.to_csv(os.path.join(analysis_path, 'reference_volumes_cerebellum.csv'))
 
 # Get list of structure present in annotation, for each structure that is present isolate itself and whatever path is below it
 reference_annotation_image = nib.load(reference_annotation_path)
@@ -35,9 +43,9 @@ reference_annotation = reference_annotation_image.get_fdata()
                                                              return_counts=True)
 # merge structure and volume tables
 # tak
-mouse_table_reference = pd.DataFrame(
-    {'Mouse': 'allen', 'VolumeInteger': mouse_volume_integer, 'VoxelNumber': mouse_voxel_number,
-     'Volume': mouse_volume})
+reference_table = pd.DataFrame({'id_custom': reference_VolumeInteger, 'VoxelNumber': reference_VoxelNumber})
+reference_table = pd.merge(left = reference_table, right=structure[['id_custom', 'structure_id_path_custom']],
+                           left_on='id_custom', right_on='id_custom')
 structure_name_list = ['asd', 'asd', 'asd']
 
 # Loop through structures
