@@ -150,10 +150,13 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
 reference_structure_crop_index_list = list()
 reference_structure_mask_list = list()
 for iVolume in range(reference_table.shape[0]):
+    structure_name = reference_table.iloc[1]['name']
+    structure_name = structure_name.replace(' ', '_')
+    structure_name = structure_name.replace(',', '')
 
     qform = reference_template_image.affine
     children = reference_table.iloc[iVolume]['id_custom_children']
-    reference_isolated_path = os.path.join(reference_path, 'perstructure', 'reference_template_test_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
+    reference_isolated_path = os.path.join(reference_path, 'perstructure', 'reference_template_test_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.nii.gz')
 
     reference_isolated_image, reference_template_mask, reference_crop_index = \
         isolateCropStructure(reference_annotation, qform,
@@ -176,17 +179,17 @@ for iVolume in range(reference_table.shape[0]):
 
         # Define mouse paths
         mouse_image = mouse_image_list[iMousePath]
-        mouse_array = mouse_list.append[iMousePath]
+        mouse_array = mouse_list[iMousePath]
         mouse_annotation_image = mouse_annotation_image_list[iMousePath]
         mouse_annotation_array = mouse_annotation_list[iMousePath]
-        native_isolated_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
-        native_isolated_flirtRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirtRigid_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
-        native_isolated_invflirtRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_invflirtRigid_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
-        native_isolated_flirtedRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirtedRigid_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
-        native_isolated_flirt_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirt_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
-        native_isolated_invflirt_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_invflirt_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
-        native_isolated_flirted_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirted_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
-        native_isolated_flirted_synned_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirted_synned_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
+        native_isolated_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.nii.gz')
+        native_isolated_flirtRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirtRigid_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.mat')
+        native_isolated_invflirtRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_invflirtRigid_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.mat')
+        native_isolated_flirtedRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirtedRigid_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.nii.gz')
+        native_isolated_flirt_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirt_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.mat')
+        native_isolated_invflirt_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_invflirt_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.mat')
+        native_isolated_flirted_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirted_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.nii.gz')
+        native_isolated_flirted_synned_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirted_synned_' + structure_name + str(reference_table.iloc[iVolume]['id_custom']) + '.nii.gz')
 
         # Crop and isolate
         mouse_isolated_image, mouse_isolated_mask, native_crop_index = \
