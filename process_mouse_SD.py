@@ -15,6 +15,32 @@ from dipy.align.metrics import CCMetric
 import datetime
 # import SimpleITK as sitk
 from compress_pickle import dump, load
+from functions import zeroPadImage
+from functions import save_image
+from functions import imageFLIRT2defField
+
+# Define functions
+def isolateCropStructure(annotation, qform, children, structure_input, output_path):
+    # Isolate structure in reference space
+    structure_template_mask = np.isin(annotation, children)
+    structure_template = structure_input * structure_template_mask  # check with fsleyes
+
+    # Crop isolated structure
+    structure_template_cropped, crop_index = zeroPadImage(structure_template, structure_template, 0.1)
+
+    # Translate cropped window for correct affine
+    qform_translated = qform.copy()
+    M = qform[:3, :3]
+    abc = qform[:3, 3]
+    crop_index_vec = M.dot(crop_index) + abc
+    qform_translated[:3, 3] = crop_index_vec
+
+    # Save cropped and translated image
+    structure_template_cropped_image = nib.Nifti1Image(structure_template_cropped, qform_translated)
+    nib.save(structure_template_cropped_image, output_path)
+    print(output_path)
+
+    return structure_template_cropped_image, structure_template_mask, crop_index
 
 # Define
 data_path = os.path.join('Data', 'Mouse', 'Processed')
@@ -25,9 +51,9 @@ reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 reference_template_path = os.path.join(reference_path, 'average_template_50_reoriented_flirted_cropped.nii.gz')
 reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_cropped.nii.gz')
-reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
 structure_path = os.path.join(reference_path, 'structure_graph_mc.csv')
 structure = pd.read_csv(structure_path)
+
 
 # reference_table['in_cerebellum'] = False
 # for iVolume in range(reference_table.shape[0]):
@@ -36,174 +62,227 @@ structure = pd.read_csv(structure_path)
 # reference_cerebellum_table = reference_table[reference_table['in_cerebellum']][['name', 'acronym', 'id', 'structure_id_path', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
 # reference_cerebellum_table.to_csv(os.path.join(analysis_path, 'reference_volumes_cerebellum.csv'))
 
-# Get list of structure present in annotation, for each structure that is present isolate itself and whatever path is below it
+# Get list of structure present in annotation, for each structure that is present isolate it and whatever path is below it
 reference_annotation_image = nib.load(reference_annotation_path)
 reference_annotation = reference_annotation_image.get_fdata()
-[reference_VolumeInteger, reference_VoxelNumber] = np.unique(np.int64(np.round(reference_annotation)),
+reference_annotation = np.int64(np.round(reference_annotation))
+reference_template_image = nib.load(reference_template_path)
+reference_template = reference_template_image.get_fdata()
+
+# Calculate volumes and use these to get non-zero volume children of non-zero volume structures
+[reference_VolumeInteger, reference_VoxelNumber] = np.unique(reference_annotation,
                                                              return_counts=True)
-# merge structure and volume tables
-# tak
 reference_table = pd.DataFrame({'id_custom': reference_VolumeInteger, 'VoxelNumber': reference_VoxelNumber})
-reference_table = pd.merge(left = reference_table, right=structure[['id_custom', 'structure_id_path_custom']],
+reference_table = pd.merge(left = reference_table, right=structure[['id_custom', 'name', 'structure_id_path_custom']],
                            left_on='id_custom', right_on='id_custom')
-structure_name_list = ['asd', 'asd', 'asd']
+structure_id_custom_children_list = list()
+for iVolume in range(reference_table.shape[0]):
+    id_custom_iVolume = reference_table['id_custom'][iVolume]
 
-# Loop through structures
-# Loop through mice
+    # Get all children
+    structure_id_custom_children = list()
+    for iVolume2 in range(reference_table.shape[0]):
+        # check if current volume integer is contained as parent to find children
+        structure_id_custom_path = np.array(
+            list(map(int, reference_table.loc[iVolume2, 'structure_id_path_custom'].
+                     strip('][').split(', '))))
+        if np.any(np.isin(structure_id_custom_path, id_custom_iVolume)):
+            id_custom_iVolume2 = reference_table['id_custom'][iVolume2]
+            structure_id_custom_children.append(id_custom_iVolume2)
+
+    # start_path_index = np.where(structure_id_custom_path == reference_table['id_custom'][iVolume])[0][0]
+    # structure_id_custom_lower_path = structure_id_custom_path[start_path_index:]
+    structure_id_custom_children_list.append(structure_id_custom_children)
+reference_table['id_custom_children'] = structure_id_custom_children_list
+
+
+
+
+# Take subset of reference table for testing
+reference_table = reference_table[np.isin(reference_table['name'], ['Cerebellum',
+                                                                    'Substantia nigra, reticular part',
+                                                                    'Substantia nigra, compact part'])]
+nStructure = reference_table.shape[0]
+
+
+
+# Load mouse volumes beforehand to save reading time
+mouse_image_list = list()
+mouse_list = list()
+mouse_annotation_image_list = list()
+mouse_annotation_list = list()
+mouse_defField_magnitude_5D_list = list()
 for iMousePath, MousePath in enumerate(mouse_path_list):
-    print(iMousePath)
-    print(MousePath)
-    print(datetime.datetime.now())
-
-    # Define mouse paths
+    # Define paths
     mouse_string = MousePath.split(os.sep)[-1]
     mouse_path = os.path.join(MousePath, mouse_string + '_reoriented.nii.gz')
-    mask_path = os.path.join(MousePath, mouse_string + '_mask_t=500_v=380_k=6.mask.nii.gz')
-    mouse_masked_path = os.path.join(MousePath, mouse_string + '_masked.nii.gz')
-    mouse_masked_translated_path = os.path.join(MousePath, mouse_string + '_translated.nii.gz')
-    mouse_masked_flirtedRigid_path = os.path.join(MousePath, mouse_string + '_flirtedRigid.nii.gz')
-    mouse_masked_flirted_path = os.path.join(MousePath, mouse_string + '_flirted.nii.gz')
-    mouse_masked_flirtRigid_path = os.path.join(MousePath, mouse_string + '_flirtRigid.mat')
-    mouse_masked_flirt_path = os.path.join(MousePath, mouse_string + '_flirt.mat')
-    mouse_masked_flirted_syn_path = os.path.join(MousePath, mouse_string + '_flirted_syn.pickle.gz')
-    mouse_masked_invflirt_path = os.path.join(MousePath, mouse_string + '_invflirt.mat')
-    mouse_masked_flirted_synned_path = os.path.join(MousePath, mouse_string + '_flirted_synned.nii.gz')
-    reference_annotation_invsynned_path = os.path.join(MousePath, mouse_string + '_annotation_flirted.nii.gz')
-    reference_annotation_invsynned_invflirted_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
-    forw_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
-    back_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
+    mouse_annotation_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
 
     # Load images
     print('loading images')
     mouse_image = nib.load(mouse_path)
     mouse = mouse_image.get_fdata()
-    mask_image = nib.load(mask_path)
-    mask = mask_image.get_fdata()
-    reference_template_image = nib.load(reference_template_path)
-    reference_template = reference_template_image.get_fdata()
-    reference_annotation_image = nib.load(reference_annotation_path)
-    reference_annotation = reference_annotation_image.get_fdata()
+    mouse_annotation_image = nib.load(mouse_annotation_path)
+    mouse_annotation = mouse_annotation_image.get_fdata()
 
-    # Mask mouse image
-    print('mask image')
-    mask = mask / np.max(mask)
-    mouse_masked = mouse * mask
-    mouse_masked_image = nib.Nifti1Image(mouse_masked, mouse_image.affine, mouse_image.header)
-    nib.save(mouse_masked_image, mouse_masked_path)
+    # Relevant variables to list
+    mouse_image_list.append(mouse_image)
+    mouse_list.append(mouse)
+    mouse_annotation_image_list.append(mouse_annotation_image)
+    mouse_annotation_list.append(mouse_annotation)
 
-    # # FLIRT subject to reference
-    # print('FLIRT rigid start')
-    # os.system('flirt -in ' + mouse_masked_path + ' \
-    #                  -ref ' + reference_template_path + ' \
-    #                  -out ' + mouse_masked_flirtedRigid_path + ' \
-    #                  -omat ' + mouse_masked_flirtRigid_path + ' \
-    #                  -dof ' + '6' + ' \
-    #                  -verbose 0')    # FLIRT subject to reference
+    # For each subject create perstructure folder if it not exists already
+    perstructure_path = os.path.join(MousePath, 'perstructure')
+    if not os.path.exists(perstructure_path):
+            os.makedirs(perstructure_path)
+            print(perstructure_path)
 
-    # FLIRT rigidly transformed subject to reference
-    print('FLIRT affine start')
-    os.system('flirt -in ' + mouse_masked_path + ' \
-                     -ref ' + reference_template_path + ' \
-                     -out ' + mouse_masked_flirted_path + ' \
-                     -omat ' + mouse_masked_flirt_path + ' \
-                     -verbose 0')
-    mouse_masked_flirted_image = nib.load(mouse_masked_flirted_path)
-    mouse_masked_flirted = mouse_masked_flirted_image.get_fdata()
+    # Preallocate 5D volumes with nan's
+    mouse_defField_magnitude_5D = np.empty(list(reference_template_image.shape)+[3]+[nStructure])
+    mouse_defField_magnitude_5D[:] = np.nan
+    mouse_defField_magnitude_5D_list.append(mouse_defField_magnitude_5D)
 
-    # SyN flirted images to reference
-    print('SyN')
-    metric = CCMetric(3)
-    level_iters = [10, 10, 5, 5, 5]
-    sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
-    mapping = sdr.optimize(static=reference_template,
-                           moving=mouse_masked_flirted,
-                           static_grid2world=reference_template_image.get_qform(),
-                           moving_grid2world=mouse_masked_flirted_image.get_qform())
-    with open(mouse_masked_flirted_syn_path, 'wb') as f:
-        dump([mapping, metric, level_iters, sdr], f, protocol=4, compression='gzip')
-    # with open(mouse_masked_syn_path, 'rb') as f:
-    #     [mapping, metric, level_iters, sdr] = load(f)
+# Loop through structures and isolate in reference and native space
+# rigid flirt, affine flirt and syn isolated native structures to the isolated reference structure
+# save relevant defField's
+# superimpose inverse defField's with np.nansum(input_nanned)/np.sum(!np.isnan(input_nanned)) [averaging]
+# save relevant superimosed defField' (reenter subject loop?)
+reference_structure_crop_index_list = list()
+reference_structure_mask_list = list()
+for iVolume in range(reference_table.shape[0]):
 
-    forw_field = mapping.get_forward_field()
-    back_field = mapping.get_backward_field()
-    forw_SS = np.sum(np.power(forw_field, 2))
-    back_SS = np.sum(np.power(back_field, 2))
-    dif_SSD = np.sum(np.power(forw_field + back_field, 2))
-    dif_SSD_norm = dif_SSD / ((forw_SS + back_SS) / 2)
-    print(f'dif_SSD_norm = {dif_SSD_norm}')
+    qform = reference_template_image.affine
+    children = reference_table.iloc[iVolume]['id_custom_children']
+    reference_isolated_path = os.path.join(reference_path, 'perstructure', 'reference_template_test_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
 
-    # forw_field_image = nib.Nifti1Image(forw_field,
-    #                                    mouse_masked_flirted_image.affine)
-    # nib.save(forw_field_image, forw_field_path)
-    # back_field_image = nib.Nifti1Image(back_field,
-    #                                    mouse_masked_flirted_image.affine)
-    # nib.save(back_field_image, back_field_path)
+    reference_isolated_image, reference_template_mask, reference_crop_index = \
+        isolateCropStructure(reference_annotation, qform,
+                             children,
+                             reference_template,
+                             reference_isolated_path)
 
+    # Save cropping index so that later the inverted defField's to native space can be reassigned
+    # for superposition with a 5D reference space volume filled with nan's
+    # (filling with nan's done with mask)
+    reference_structure_crop_index_list.append(reference_crop_index)
+    reference_structure_mask_list.append(reference_template_mask)
 
-    mouse_masked_flirted_synned = mapping.transform(mouse_masked_flirted)
-    mouse_masked_flirted_synned_image = nib.Nifti1Image(mouse_masked_flirted_synned,
-                                                                 mouse_masked_flirted_image.affine,
-                                                        mouse_masked_flirted_image.header)
-    nib.save(mouse_masked_flirted_synned_image, mouse_masked_flirted_synned_path)
+    # Loop through mice
+    for iMousePath, MousePath in enumerate(mouse_path_list):
+        mouse_string = MousePath.split(os.sep)[-1]
+        print(iMousePath)
+        print(MousePath)
+        print(datetime.datetime.now())
 
-    # Inverse SyN reference to subject space
-    print('inverse SyN')
-    reference_annotation_invsynned = mapping.transform_inverse(reference_annotation, interpolation='nearest')
-    reference_annotation_invsynned_image = nib.Nifti1Image(reference_annotation_invsynned,
-                                                           mouse_masked_flirted_image.affine,
-                                                           mouse_masked_flirted_image.header)
-    nib.save(reference_annotation_invsynned_image, reference_annotation_invsynned_path)
+        # Define mouse paths
+        mouse_image = mouse_image_list[iMousePath]
+        mouse_array = mouse_list.append[iMousePath]
+        mouse_annotation_image = mouse_annotation_image_list[iMousePath]
+        mouse_annotation_array = mouse_annotation_list[iMousePath]
+        native_isolated_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
+        native_isolated_flirtRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirtRigid_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
+        native_isolated_invflirtRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_invflirtRigid_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
+        native_isolated_flirtedRigid_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirtedRigid_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
+        native_isolated_flirt_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirt_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
+        native_isolated_invflirt_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_invflirt_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.mat')
+        native_isolated_flirted_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirted_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
+        native_isolated_flirted_synned_path = os.path.join(MousePath, 'perstructure', mouse_string + '_isolated_flirted_synned_' + reference_table.iloc[iVolume]['name'] + reference_table.iloc[iVolume]['id_custom'] + '.nii.gz')
 
-    # inflirt invsynned annotation to flirted image to get annotation of original image
-    print('inverse FLIRT')
-    os.system('convert_xfm -omat '+mouse_masked_invflirt_path+' -inverse '+mouse_masked_flirt_path)
-    os.system('flirt -in ' + reference_annotation_invsynned_path + ' \
-                     -ref ' + mouse_path + ' \
-                     -out ' + reference_annotation_invsynned_invflirted_path + ' \
-                     -init ' + mouse_masked_invflirt_path + ' \
-                     -applyxfm \
-                     -interp nearestneighbour \
-                     -verbose 1')
+        # Crop and isolate
+        mouse_isolated_image, mouse_isolated_mask, native_crop_index = \
+            isolateCropStructure(mouse_annotation_array, mouse_image.affine,
+                                 children,
+                                 mouse_array,
+                                 native_isolated_path)
 
+        # FLIRT (rigid) cropped native isolate to cropped reference isolate
+        print('FLIRT rigid start')
+        os.system('flirt -in ' + native_isolated_path + ' \
+                         -ref ' + reference_isolated_path + ' \
+                         -out ' + native_isolated_flirtedRigid_path + ' \
+                         -omat ' + native_isolated_flirtRigid_path + ' \
+                         -dof ' + '6' + ' \
+                         -verbose 0')    # FLIRT subject to reference
+        os.system('convert_xfm -omat ' + native_isolated_invflirtRigid_path + ' -inverse ' + native_isolated_flirtRigid_path)
 
+        # FLIRT (affine) cropped native isolate to cropped reference isolate
+        print('FLIRT affine start')
+        os.system('flirt -in ' + native_isolated_flirtedRigid_path + ' \
+                         -ref ' + reference_isolated_path + ' \
+                         -out ' + native_isolated_flirted_path + ' \
+                         -omat ' + native_isolated_flirt_path + ' \
+                         -verbose 0')
+        os.system('convert_xfm -omat ' + native_isolated_invflirt_path + ' -inverse ' + native_isolated_flirt_path)
+        native_isolated_flirted_image = nib.load(native_isolated_flirted_path)
+        native_isolated_flirted = native_isolated_flirted_image.get_fdata()
 
-    # invflirt annotation!
-    # reference_annotation_invsynned_invflirted_path
+        # SyN flirted images to reference
+        print('SyN')
+        metric = CCMetric(3)
+        level_iters = [10, 10, 5, 5, 5]
+        sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
+        mapping = sdr.optimize(static=reference_isolated_path,
+                               moving=native_isolated_flirted,
+                               static_grid2world=reference_isolated_image.get_qform(),
+                               moving_grid2world=native_isolated_flirted_image.get_qform())
+        # with open(mouse_masked_flirted_syn_path, 'wb') as f:
+        #     dump([mapping, metric, level_iters, sdr], f, protocol=4, compression='gzip')
+        # with open(mouse_masked_syn_path, 'rb') as f:
+        #     [mapping, metric, level_iters, sdr] = load(f)
 
-    # # FLIRT images to reference
-    # elastixImageFilter = sitk.ElastixImageFilter()
-    # elastixImageFilter.SetFixedImage(sitk.ReadImage(reference_template_path))
-    # elastixImageFilter.SetMovingImage(sitk.ReadImage(mouse_path))
-    # elastixImageFilter.SetParameterMap(sitk.GetDefaultParameterMap('translation'))
-    # elastixImageFilter.Execute()
-    # mouse_masked_translated = elastixImageFilter.GetResultImage()
-    # sitk.WriteImage(mouse_masked_translated, mouse_masked_translated_path)
-    #
-    # elastixImageFilter.SetMovingImage(sitk.ReadImage(mouse_masked_translated_path))
-    # elastixImageFilter.SetParameterMap(sitk.GetDefaultParameterMap('affine'))
-    # elastixImageFilter.Execute()
-    # mouse_masked_flirted = elastixImageFilter.GetResultImage()
-    # sitk.WriteImage(mouse_masked_flirted, mouse_masked_flirted_path)
-    #
-    # mouse_masked_flirted_image = nib.load(mouse_masked_flirted_path)
-    # mouse_masked_flirted = mouse_image.get_fdata()
+        native_isolated_flirted_synned = mapping.transform(native_isolated_flirted)
+        native_isolated_flirted_synned_image = nib.Nifti1Image(native_isolated_flirted_synned,
+                                                               native_isolated_flirted_image.affine)
+        nib.save(native_isolated_flirted_synned_image, native_isolated_flirted_synned_path)
 
-    # fsl.wrappers.flirt(src=mouse_masked_path,
-    #                    ref=reference_template_path,
-    #                    omat=mouse_masked_flirt_path,
-    #                    out=mouse_masked_flirted_path,
-    #                    verbose=1)
-    # mouse_masked_flirted_image = nib.load(mouse_masked_flirted_path)
-    # mouse_masked_flirted = mouse_masked_flirted_image.get_fdata()
-    # flirt - in $image_inmasked \
-    #             - ref $image_reference \
-    #                    - omat $image_warpaffine \
-    #                            - out $image_inmasked_flirted \
-    #                                   - verbose
-    # 1
-    # flirt - in $image \
-    #             - ref $image_reference \
-    #                    - out $image_flirted \
-    #                           - init $image_warpaffine \
-    #                                   - applyxfm \
-    #                                   - verbose 1
+        # Get FLIRT rigid vector field, assign to uncropped reference space, calculate magnitude and assign to 5D volume
+        defField = imageFLIRT2defField(reference_template_image, native_isolated_invflirtRigid_path, dof='6')
+        defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
+        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
+                                                     reference_crop_index[1]:defField_magnitude.shape[1],
+                                                     reference_crop_index[2]:defField_magnitude.shape[2],
+                                                     0, iVolume] = defField_magnitude
+
+        # Get FLIRT affine vector field, calculate magnitude and assign to 5D volume
+        defField = imageFLIRT2defField(reference_template_image, native_isolated_invflirt_path)
+        defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
+        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
+                                                     reference_crop_index[1]:defField_magnitude.shape[1],
+                                                     reference_crop_index[2]:defField_magnitude.shape[2],
+                                                     1, iVolume] = defField_magnitude
+
+        # Get SyN vector field, calculate magnitude and assign to 5D volume
+        defField = mapping.get_backward_field()
+        defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
+        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
+                                                     reference_crop_index[1]:defField_magnitude.shape[1],
+                                                     reference_crop_index[2]:defField_magnitude.shape[2],
+                                                     2, iVolume] = defField_magnitude
+
+# Loop again through subjects and average each of the three 4D volumes in the 5D volume list to get the final manual vector magnitudes
+for iMousePath, MousePath in enumerate(mouse_path_list):
+    mouse_string = MousePath.split(os.sep)[-1]
+    native_isolated_flirtRigid_magnitude_path = os.path.join(MousePath, 'perstructure', mouse_string + '_flirtRigid_magnitude.nii.gz')
+    native_isolated_flirt_magnitude_path = os.path.join(MousePath, 'perstructure', mouse_string + '_flirt_magnitude.nii.gz')
+    native_isolated_syn_magnitude_path = os.path.join(MousePath, 'perstructure', mouse_string + '_syn_magnitude.nii.gz')
+
+    defField_magnitude = np.squeeze(mouse_defField_magnitude_5D_list[iMousePath][:,:,:,0,:])
+    nData = np.sum(np.logical_not(np.isnan(defField_magnitude)), axis=3)
+    defField_magnitude_averaged = np.nansum(defField_magnitude)
+    defField_magnitude_averaged = defField_magnitude_averaged/nData
+    defField_magnitude_averaged[nData == 0] = 0
+    save_image(defField_magnitude_averaged, reference_template_image, native_isolated_flirtRigid_magnitude_path)
+
+    defField_magnitude = np.squeeze(mouse_defField_magnitude_5D_list[iMousePath][:,:,:,1,:])
+    nData = np.sum(np.logical_not(np.isnan(defField_magnitude)), axis=3)
+    defField_magnitude_averaged = np.nansum(defField_magnitude)
+    defField_magnitude_averaged = defField_magnitude_averaged/nData
+    defField_magnitude_averaged[nData == 0] = 0
+    save_image(defField_magnitude_averaged, reference_template_image, native_isolated_flirt_magnitude_path)
+
+    defField_magnitude = np.squeeze(mouse_defField_magnitude_5D_list[iMousePath][:,:,:,2,:])
+    nData = np.sum(np.logical_not(np.isnan(defField_magnitude)), axis=3)
+    defField_magnitude_averaged = np.nansum(defField_magnitude)
+    defField_magnitude_averaged = defField_magnitude_averaged/nData
+    defField_magnitude_averaged[nData == 0] = 0
+    save_image(defField_magnitude_averaged, reference_template_image, native_isolated_syn_magnitude_path)
