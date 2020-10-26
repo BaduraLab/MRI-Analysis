@@ -146,7 +146,7 @@ defField_image = nib.Nifti1Image(defField_magnitude_flirtRigid_meanWT, ref_image
 nib.save(defField_image, defField_magnitude_meanWT_path)
 defField_image = nib.Nifti1Image(defField_magnitude_flirtRigid_meanKO, ref_image.affine)
 nib.save(defField_image, defField_magnitude_meanKO_path)
-defField_image = nib.Nifti1Image(defField_magnitude_flirtRigid_pval, ref_image.affine)
+defField_image = nib.Nifti1Image(np.abs(np.log10(defField_magnitude_flirtRigid_pval)), ref_image.affine)
 nib.save(defField_image, defField_magnitude_pval_path)
 
 # Save flirt
@@ -157,7 +157,7 @@ defField_image = nib.Nifti1Image(defField_magnitude_flirt_meanWT, ref_image.affi
 nib.save(defField_image, defField_magnitude_meanWT_path)
 defField_image = nib.Nifti1Image(defField_magnitude_flirt_meanKO, ref_image.affine)
 nib.save(defField_image, defField_magnitude_meanKO_path)
-defField_image = nib.Nifti1Image(defField_magnitude_flirt_pval, ref_image.affine)
+defField_image = nib.Nifti1Image(np.abs(np.log10(defField_magnitude_flirt_pval)), ref_image.affine)
 nib.save(defField_image, defField_magnitude_pval_path)
 
 # Save syn
@@ -168,5 +168,5 @@ defField_image = nib.Nifti1Image(defField_magnitude_syn_meanWT, ref_image.affine
 nib.save(defField_image, defField_magnitude_meanWT_path)
 defField_image = nib.Nifti1Image(defField_magnitude_syn_meanKO, ref_image.affine)
 nib.save(defField_image, defField_magnitude_meanKO_path)
-defField_image = nib.Nifti1Image(defField_magnitude_syn_pval, ref_image.affine)
+defField_image = nib.Nifti1Image(np.abs(np.log10(defField_magnitude_syn_pval)), ref_image.affine)
 nib.save(defField_image, defField_magnitude_pval_path)

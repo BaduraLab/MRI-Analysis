@@ -163,6 +163,7 @@ for iVolume in range(reference_table.shape[0]):
                              children,
                              reference_template,
                              reference_isolated_path)
+    reference_isolated = reference_isolated_image.get_fdata()
 
     # Save cropping index so that later the inverted defField's to native space can be reassigned
     # for superposition with a 5D reference space volume filled with nan's
@@ -221,10 +222,15 @@ for iVolume in range(reference_table.shape[0]):
 
         # SyN flirted images to reference
         print('SyN')
-        metric = CCMetric(3)
+        CCMetric_radius = 4
+        print(CCMetric_radius)
+        while 2*CCMetric_radius+1>np.min(reference_isolated_image.shape):
+            CCMetric_radius = CCMetric_radius - 1
+            print(CCMetric_radius)
+        metric = CCMetric(3, radius=CCMetric_radius)
         level_iters = [10, 10, 5, 5, 5]
         sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
-        mapping = sdr.optimize(static=reference_isolated_path,
+        mapping = sdr.optimize(static=reference_isolated,
                                moving=native_isolated_flirted,
                                static_grid2world=reference_isolated_image.get_qform(),
                                moving_grid2world=native_isolated_flirted_image.get_qform())
