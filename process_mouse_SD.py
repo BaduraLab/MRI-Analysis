@@ -272,17 +272,31 @@ for iVolume in range(reference_table.shape[0]):
         print(invflirt)
         defField = imageFLIRT2defField(reference_template_image, invflirt)
         defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
-        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
-                                                     reference_crop_index[1]:defField_magnitude.shape[1],
-                                                     reference_crop_index[2]:defField_magnitude.shape[2],
+        defField_5D_slice = mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:(reference_crop_index[0]+defField_magnitude.shape[0]),
+                                                                         reference_crop_index[1]:(reference_crop_index[1]+defField_magnitude.shape[1]),
+                                                                         reference_crop_index[2]:(reference_crop_index[2]+defField_magnitude.shape[2]),
+                                                                         1, iVolume]
+        defField_magnitude = defField_magnitude[:defField_5D_slice.shape[0],
+                                                :defField_5D_slice.shape[1],
+                                                :defField_5D_slice.shape[2]] # crop so no overextension over reference space boundaries
+        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:(reference_crop_index[0]+defField_magnitude.shape[0]),
+                                                     reference_crop_index[1]:(reference_crop_index[1]+defField_magnitude.shape[1]),
+                                                     reference_crop_index[2]:(reference_crop_index[2]+defField_magnitude.shape[2]),
                                                      1, iVolume] = defField_magnitude
 
         # Get SyN vector field, calculate magnitude and assign to 5D volume
         defField = mapping.get_backward_field()
         defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
-        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
-                                                     reference_crop_index[1]:defField_magnitude.shape[1],
-                                                     reference_crop_index[2]:defField_magnitude.shape[2],
+        defField_5D_slice = mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:(reference_crop_index[0]+defField_magnitude.shape[0]),
+                                                                         reference_crop_index[1]:(reference_crop_index[1]+defField_magnitude.shape[1]),
+                                                                         reference_crop_index[2]:(reference_crop_index[2]+defField_magnitude.shape[2]),
+                                                                         2, iVolume]
+        defField_magnitude = defField_magnitude[:defField_5D_slice.shape[0],
+                                                :defField_5D_slice.shape[1],
+                                                :defField_5D_slice.shape[2]] # crop so no overextension over reference space boundaries
+        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:(reference_crop_index[0]+defField_magnitude.shape[0]),
+                                                     reference_crop_index[1]:(reference_crop_index[1]+defField_magnitude.shape[1]),
+                                                     reference_crop_index[2]:(reference_crop_index[2]+defField_magnitude.shape[2]),
                                                      2, iVolume] = defField_magnitude
 
 # Loop again through subjects and average each of the three 4D volumes in the 5D volume list to get the final manual vector magnitudes
