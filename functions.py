@@ -104,18 +104,18 @@ def subjectPath2volumeTable(subject_path):
 
 
 # Function to compute volumes for image
-def imageFLIRT2defField(image, flirt, **kwargs):
+def imageFLIRT2defField(image, flirt):
     M_image = image.affine[:3, :3]
     abc_image = image.affine[:3, 3]
-    dof = kwargs.get('dof', '12')
-    if dof == '6':
-        print('rigid')
-        M_flirt = flirt
-        abc_flirt = 0
-    else:
-        print('affine')
-        M_flirt = flirt[:3, :3]
-        abc_flirt = flirt[:3, 3]
+    # dof = kwargs.get('dof', '12')
+    # if dof == '6':
+    #     print('rigid')
+    #     M_flirt = flirt
+    #     abc_flirt = 0
+    # else:
+    print('affine')
+    M_flirt = flirt[:3, :3]
+    abc_flirt = flirt[:3, 3]
 
     image_shape = image.shape  #######################
     defField = np.empty(shape=(image_shape[0], image_shape[1], image_shape[2], 3))

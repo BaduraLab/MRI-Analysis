@@ -247,15 +247,30 @@ for iVolume in range(reference_table.shape[0]):
         nib.save(native_isolated_flirted_synned_image, native_isolated_flirted_synned_path)
 
         # Get FLIRT rigid vector field, assign to uncropped reference space, calculate magnitude and assign to 5D volume
-        defField = imageFLIRT2defField(reference_template_image, native_isolated_invflirtRigid_path, dof='6')
+        with open(native_isolated_invflirtRigid_path, 'r') as f:
+            txt = f.read()
+            invflirtRigid = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+        print(invflirtRigid)
+        defField = imageFLIRT2defField(reference_template_image, invflirtRigid)
         defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
-        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
-                                                     reference_crop_index[1]:defField_magnitude.shape[1],
-                                                     reference_crop_index[2]:defField_magnitude.shape[2],
+        defField_5D_slice = mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:(reference_crop_index[0]+defField_magnitude.shape[0]),
+                                                                         reference_crop_index[1]:(reference_crop_index[1]+defField_magnitude.shape[1]),
+                                                                         reference_crop_index[2]:(reference_crop_index[2]+defField_magnitude.shape[2]),
+                                                                         0, iVolume]
+        defField_magnitude = defField_magnitude[:defField_5D_slice.shape[0],
+                                                :defField_5D_slice.shape[1],
+                                                :defField_5D_slice.shape[2]] # crop so no overextension over reference space boundaries
+        mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:(reference_crop_index[0]+defField_magnitude.shape[0]),
+                                                     reference_crop_index[1]:(reference_crop_index[1]+defField_magnitude.shape[1]),
+                                                     reference_crop_index[2]:(reference_crop_index[2]+defField_magnitude.shape[2]),
                                                      0, iVolume] = defField_magnitude
 
         # Get FLIRT affine vector field, calculate magnitude and assign to 5D volume
-        defField = imageFLIRT2defField(reference_template_image, native_isolated_invflirt_path)
+        with open(native_isolated_invflirt_path, 'r') as f:
+            txt = f.read()
+            invflirt = np.array([[float(num) for num in item.split()] for item in txt.split('\n')[:-1]])
+        print(invflirt)
+        defField = imageFLIRT2defField(reference_template_image, invflirt)
         defField_magnitude = np.sqrt(np.sum(np.power(defField, 2), axis=3))
         mouse_defField_magnitude_5D_list[iMousePath][reference_crop_index[0]:defField_magnitude.shape[0],
                                                      reference_crop_index[1]:defField_magnitude.shape[1],

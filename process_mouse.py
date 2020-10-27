@@ -29,6 +29,7 @@ reference_annotation_path = os.path.join(reference_path, 'annotation_50_reorient
 # Loop through mice
 for iMousePath, MousePath in enumerate(mouse_path_list):
     print(iMousePath)
+    print(iMousePath)
     print(MousePath)
     print(datetime.datetime.now())
 
