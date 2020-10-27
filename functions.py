@@ -6,6 +6,7 @@ import PIL.Image
 import os
 import glob
 import pandas as pd
+import fractions, math
 
 
 def imageAdjustNN(input, input_logical, correction, correction_logical):
@@ -162,3 +163,14 @@ def zeroPadImage(input_3D_numpy, input_3D_numpy_template, padRatio):
     print((f'Crop index = {crop_index}'))
 
     return output, crop_index
+
+def round_half_up(number, dec_places=0):
+    sign = math.copysign(1, number)
+    number_exact = abs(fractions.Fraction(number))
+    shifted = number_exact * 10**dec_places
+    shifted_trunc = int(shifted)
+    if shifted - shifted_trunc >= fractions.Fraction(1, 2):
+        result = (shifted_trunc + 1) / 10**dec_places
+    else:
+        result = shifted_trunc / 10**dec_places
+    return sign * float(result)
