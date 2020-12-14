@@ -174,3 +174,7 @@ def round_half_up(number, dec_places=0):
     else:
         result = shifted_trunc / 10**dec_places
     return sign * float(result)
+
+def strPathList2List(strPathList):
+    List = list(map(int, strPathList.strip('][').split(', ')))
+    return List

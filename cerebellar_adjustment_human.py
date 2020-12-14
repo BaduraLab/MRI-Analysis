@@ -30,6 +30,11 @@ CerebrA_path = os.path.join(reference_path, 'CerebrA')
 CerebrA_annotation_path = os.path.join(CerebrA_path, 'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz')
 CerebrA_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
 
+volIntList = list(np.arange(34)+1)
+volIntList_WM = [29, 30, 31, 32, 33, 34]
+volIntList_toconserve = [9]+volIntList_WM
+volIntList_toadjust = list(set(volIntList) - set(volIntList_toconserve))
+
 # Follows
 nAnnotation = len(input_path_list_list)
 structure_table_list = [pd.read_csv(structure_path_list[0],
@@ -64,13 +69,13 @@ for iPath in input_path_list_list[0]:
     X, Y, Z = np.mgrid[0:automatic_image.shape[0]:1, 0:automatic_image.shape[1]:1, 0:automatic_image.shape[2]:1]
 
     # Logicals
-    orsuit_automatic_logical = np.isin(automatic, np.arange(28)+1)
-    manual_logical = np.isin(manual, np.arange(28)+1)
+    orsuit_automatic_logical = np.isin(automatic, volIntList_toadjust)
+    manual_logical = np.isin(manual, volIntList_toadjust)
     suit_add_logical = np.logical_and(np.logical_not(orsuit_automatic_logical),
                                       manual_logical)  # no automatic annotation, but there is manual annotation - add
     suit_remove_logical = np.logical_and(np.logical_not(manual_logical),
                                          orsuit_automatic_logical)  # no manual annotation, but there is automatic annotation - remove
-    orsuit_automatic_specific_logical = np.isin(automatic, [29, 30, 31, 32, 33, 34])  # specific correct orsuit logical
+    orsuit_automatic_specific_logical = np.isin(automatic, volIntList_WM)  # specific correct orsuit logical
     suit_remove_logical = np.logical_and(suit_remove_logical, np.logical_not(
         orsuit_automatic_specific_logical))  # do not remove correct orsuit annotation
 
@@ -93,6 +98,9 @@ for iPath in input_path_list_list[0]:
 
     # Remove points which are not specific orsuit or manual
     adjusted[suit_remove_logical] = 0
+
+    # Exeption add for volInt 9
+    adjusted[automatic == 9] = 9
 
     # Save adjusted image
     adjusted = np.round(adjusted)
@@ -152,7 +160,7 @@ for iPath in input_path_list_list[2]:
                                         np.isin(adjusted, np.concatenate([CerebrA_cerebellum_volumeIntegers,
                                                                           np.array([39,
                                                                                     90])])))  # no manual annotation, but there is automatic annotation - remove
-        orsuit_specific_logical = np.isin(orsuit, [29, 30, 31, 32, 33, 34])
+        orsuit_specific_logical = np.isin(orsuit, volIntList_WM)
         np.sum(automatic - automatic)
         remove_logical = np.logical_and(remove_logical, np.logical_not(
             orsuit_specific_logical))  # do not remove correct orsuit annotation

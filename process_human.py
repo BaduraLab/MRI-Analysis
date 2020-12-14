@@ -33,7 +33,10 @@ annotation_path_list = [os.path.join(reference_path,
                                      'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz'),
                         os.path.join(reference_path,
                                      'CerebrA',
-                                     'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii.gz')]
+                                     'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii.gz'),
+                        os.path.join(reference_path,
+                                     'AAN',
+                                     'AAN_reoriented.nii.gz')] ###################################### ADD
 template_path_list = [os.path.join(reference_path,
                                    'standard',
                                    'MNI152_T1_1mm_brain_reoriented.nii.gz'),
@@ -45,11 +48,15 @@ template_path_list = [os.path.join(reference_path,
                                    'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii.gz'),
                       os.path.join(reference_path,
                                    'CerebrA',
-                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii.gz')]
+                                   'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii.gz'),
+                      os.path.join(reference_path,
+                                   'standard',
+                                   'MNI152_T1_1mm_brain_reoriented.nii.gz')]
 annotation_name_list = ['suit',
                         'subcortical',
                         'CerebrA',
-                        'mask']
+                        'mask',
+                        'AAN']
 # annotation_path_list = [os.path.join(reference_path,
 #                                      'subcortical',
 #                                      'prob_atlas_bilateral_reoriented.nii.gz')]
@@ -64,7 +71,7 @@ input_path_list = list(set(input_path_list) - set(input_skull_path_list))
 input_orsuit_path_list = glob.glob(os.path.join(data_path, '*', 'iw_Lobules-SUIT_u_a_*_reoriented_seg1.nii'))
 
 # Define
-probability_threshold = [0.2, 0.4, np.nan, np.nan] # Might be changed to list the same length as number of annotations
+probability_threshold = [0.2, 0.4, np.nan, np.nan, np.nan]  # Might be changed to list the same length as number of annotations
 # probability_threshold = 0.5
 def saveImage(image_fdata, path, image_qform_template):
     image = nib.Nifti1Image(image_fdata, image_qform_template.affine, image_qform_template.header)

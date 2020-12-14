@@ -33,6 +33,11 @@ structure_table_list = [pd.read_csv(structure_path_list[0]),
                         pd.read_csv(structure_path_list[2]),
                         pd.read_csv(structure_path_list[3])]
 
+volIntList = list(np.arange(34)+1)
+volIntList_WM = [29, 30, 31, 32, 33, 34]
+volIntList_toconserve = [9]+volIntList_WM
+volIntList_toadjust = list(set(volIntList) - set(volIntList_toconserve))
+
 
 
 # Adjust MDS_1 orsuit with manual suit
@@ -40,24 +45,32 @@ for iPath in input_path_list_list[0]:
     print(iPath)
 
     # Get adjusted output path
+    original_path = iPath.split('suit')[0] + 'orsuit_thrarg.nii.gz'
     automatic_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_1.nii.gz'
     manual_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_2.nii.gz'
     adjusted_path = iPath.split('suit')[0] + 'orsuit_thrarg_adjusted_lobular.nii.gz'
     print(adjusted_path)
 
     # Load image
+    original_image = nib.load(original_path)
+    original = original_image.get_fdata()
     automatic_image = nib.load(automatic_path)
     automatic = automatic_image.get_fdata()
     manual_image = nib.load(manual_path)
     manual = manual_image.get_fdata()
+
+    # Adjust manual with original for volInt 9
+    original_9 = original == 9
+    manual[np.logical_and(np.logical_not(original_9), manual == 9)] = 0
+
     adjusted = manual.copy()
 
     # Grid for lowdetail and highdetail
     X, Y, Z = np.mgrid[0:automatic_image.shape[0]:1, 0:automatic_image.shape[1]:1, 0:automatic_image.shape[2]:1]
 
     # Logicals
-    automatic_logical = np.isin(automatic, np.arange(28)+1)
-    manual_logical = np.isin(manual, np.arange(28)+1)
+    automatic_logical = np.isin(automatic, volIntList_toadjust)
+    manual_logical = np.isin(manual, volIntList_toadjust)
     tree_logical = np.logical_and(manual_logical,
                                  automatic_logical)  # no manual annotation, but there is automatic annotation - add
     add_logical = np.logical_and(np.logical_not(manual_logical),
@@ -96,6 +109,14 @@ for iPath in input_path_list_list[0]:
     # Remove points which are not marked in cerebellar mask (_1)
     remove_logical = np.logical_and(np.logical_not(automatic_logical), manual_logical)
     adjusted[remove_logical] = 0
+
+    # Add exception for volInt = 9
+    adjusted_extra9 = np.logical_and(np.logical_not(original_9), adjusted == 9)
+    if np.any(adjusted_extra9):
+        print('volInt=9 added, more 9 in adjusted than expected')
+        print(np.sum(adjusted_extra9))
+        adjusted[adjusted_extra9] = 0
+    adjusted[original_9] = 9
 
     # Save adjusted image
     adjusted = np.round(adjusted).astype(int)

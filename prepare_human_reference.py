@@ -6,6 +6,7 @@ import pandas as pd
 from pathlib import Path
 import numpy as np
 import nibabel as nib
+from functions import reorient_image
 
 # Define paths
 reference_path = os.path.join('Data', 'Human', 'Reference')
@@ -162,5 +163,40 @@ for iPath, Path in enumerate(sum([suit_path_list, subcortical_path_list, CerebrA
     nib.save(image, Path.split('.')[0] + '_reoriented.nii.gz')
 
 
+
+# Prepare AAN .nii files by summing mask volumes with different integers
+AAN_path_list = glob.glob(os.path.join(reference_path, 'AAN', '*.nii'))
+AAN_acronym_list = list()
+AAN_nVoxel_list = list()
+AAN_volume_list = list()
+AAN_VolumeInteger_list = list()
+AAN_VolumeIntegerPath_list = list()
+AAN_array = np.zeros(nib.load(AAN_path_list[0]).shape)
+for iAAN, AAN_path in enumerate(AAN_path_list):
+    AAN_image = nib.load(AAN_path)
+    AAN = AAN_image.get_fdata()
+    AAN = AAN.astype(int)
+
+    AAN_VolumeInteger = iAAN + 1
+    AAN_VolumeInteger_list.append(AAN_VolumeInteger)
+    AAN_VolumeIntegerPath_list.append([AAN_VolumeInteger])
+    AAN_array = AAN_array + AAN * (iAAN+1)
+
+    AAN_acronym_list.append(os.path.basename(AAN_path).split('_')[1])
+    AAN_nVoxel_list.append(np.sum(AAN))
+    AAA_image_voxel_volume = np.prod(AAN_image.header['pixdim'][1:4])  # should be in mm^3
+    AAN_volume_list.append(np.sum(AAN) * AAA_image_voxel_volume)
+
+AAN_array = AAN_array.astype(int)
+AAN_output_image = nib.Nifti1Image(AAN_array,
+                                   AAN_image.affine)
+AAN_output_path = os.path.join(reference_path, 'AAN', 'AAN.nii.gz')
+nib.save(AAN_output_image, AAN_output_path)
+
+AAN_table = pd.DataFrame(list(zip(AAN_acronym_list, AAN_nVoxel_list, AAN_volume_list, AAN_VolumeInteger_list, AAN_VolumeIntegerPath_list)),
+                         columns=['acronym', 'nVoxel', 'volume', 'VolumeInteger', 'VolumeIntegerPath'])
+AAN_table.to_csv(os.path.join(reference_path, 'AAN', 'AAN_pretable_plus.csv'))
+
+reorient_image(AAN_output_path)
 
 
