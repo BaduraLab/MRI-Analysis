@@ -13,3 +13,11 @@ _pycache_/
 __pycache__/
 /dipy_example
 /Backup
+
+.idea/rAvailablePackageCache.xml
+
+.idea/rGraphicsSettings.xml
+
+.idea/rSettings.xml
+
+cohenD_CI.R
