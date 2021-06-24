@@ -6,6 +6,19 @@ import os
 import glob
 from scipy.stats import ttest_ind
 
+## MAIN: we include manual annotation by isolation and superposition of Jacobian determinant arrays
+# flirtRigid flirt SyN manual (native-reference)
+# isolate manually adjusted structure in reference space
+# flirtRigid flirt SyN (reference-native)
+# 3 vector fields
+# can be combined in different ways (7, most interesting one is all put together and affine and non-linear put together --> volume changing)
+# calculate jacobian vector field --> matrix field
+# calculate determinant
+# only save determinant scalar field
+
+## SECOND: we do not include manual annotation and simply use the inverse transforms that were actually applied as vector fields
+# problem is that no flirtRigid used originally, only affine and non-linear
+
 # Define paths
 data_path = os.path.join('Data', 'Mouse', 'Processed')
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
@@ -58,6 +71,7 @@ for iData, Path in enumerate(data_path_list):
     defField_magnitude_image = nib.Nifti1Image(defField_magnitude, ref_image.affine)
     nib.save(defField_magnitude_image, defField_magnitude_path)
     defField_magnitude_flirtRigid[:,:,:,iData] = defField_magnitude # Assign syn defField_magnitude's to 4D array
+
 
 
     # affine flirt vector field and magnitude

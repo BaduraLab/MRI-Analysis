@@ -24,7 +24,8 @@ data_path = os.path.join('Data', 'Human', 'Processed')
 reference_path = os.path.join('Data', 'Human', 'Reference')
 analysis_path = os.path.join('Data', 'Human', 'Analysis')
 annotation_path = os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.nii')
-input_path_list = glob.glob(os.path.join(data_path, '*', '*_lobular.nii.gz'))
+# input_path_list = glob.glob(os.path.join(data_path, '*', '*_lobular.nii.gz'))
+input_path_list = glob.glob(os.path.join(data_path, '*', 'Isolations', 'ci', '*annotation_orsuit_thrarg_adjusted_lobular_flirtedRigid_ci.nii.gz'))
 # mouse_lobular_path_list = glob.glob(os.path.join(data_path, '*', '*invsynned*cerebellum*lobular.nii.gz'))
 reference_structure_path = os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.csv')
 reference_structure_mc_path = os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT_mc.csv')
@@ -35,7 +36,7 @@ reference_structure_mc_path = os.path.join(reference_path, 'suit', 'atlasesSUIT'
 structure = pd.read_csv(reference_structure_path)
 
 # Convert reference structure table
-id_custom_to_id_mc = [25, 1, 23, 12, 19, 5, 17, 2, 11, 22, 10, 20, 5, 13, 3, 30, 31, 7, 18]
+id_custom_to_id_mc = [25, 1, 23, 12, 19, 5, 17, 2, 11, 22, 10, 20, 5, 13, 3, 30, 31, 7]
 id_mc_to_id_custom = [1, 25, 12, 23, 5, 19, 2, 17, 22, 11, 20, 10, 13, 5, 30, 3, 7, 31]
 structure['VolumeInteger_mc'] = npi.remap(structure['VolumeInteger'],
                                id_custom_to_id_mc,

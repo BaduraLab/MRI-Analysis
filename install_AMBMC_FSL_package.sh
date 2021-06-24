@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define package folder
-package_folder="/home/enzo/Desktop/ambmc-c57bl6-FSL-atlas_v0.8"
+package_folder="/home/enzo/Downloads/ambmc-c57bl6-FSL-atlas_v0.8"
 
 # Move files to appropriate folders
 target_folder="${FSLDIR}/data/standard/"

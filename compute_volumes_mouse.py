@@ -3,7 +3,7 @@ import numpy as np
 import nibabel as nib
 import pandas as pd
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import glob
 import csv
@@ -13,13 +13,15 @@ from pathlib import Path
 import numpy_indexed as npi
 from functions import remap_3D
 from functions import save_image
-
 from dipy.align.imwarp import SymmetricDiffeomorphicRegistration
 from dipy.align.imwarp import DiffeomorphicMap
 from dipy.align.metrics import CCMetric
 from compress_pickle import dump, load
 import pathlib
+import seaborn as sns
 
+# ce mi mice
+# WT30, noWT30, selectively noWT30
 
 
 ## Function to compute volumes for image
@@ -34,6 +36,10 @@ def image2volumetable(image_path, voxel_volume):
         {'Mouse': 'allen', 'VolumeInteger': mouse_volume_integer, 'VoxelNumber': mouse_voxel_number,
          'Volume': mouse_volume})
 
+    # Remove later
+    VTA_volume = mouse_voxel_number[mouse_volume_integer == 1241]
+    print(f'Image path = {image_path}, while VTA volume is {VTA_volume}')
+
     # print number of nonzero volumes
     print(mouse_table_reference.shape[0])
     print(np.sum(mouse_table_reference['Volume'] != 0))
@@ -47,21 +53,27 @@ def image2volumetable(image_path, voxel_volume):
 
     # print number of nonzero volumes remaining after merge, which should be the same
     print(np.sum(mouse_table_reference['Volume'] != 0))
+    mouse_table_reference['isLowestLevel'] = np.logical_not(np.isnan(mouse_table_reference['VolumeInteger']))
+    rootVol = np.array(mouse_table_reference.loc[mouse_table_reference['name'] == 'root', 'Volume'])
+    print(f'Root volume before addition is {rootVol}')
 
     # Fill in structures without a volume by summing relevant lower level structures
     for iVolume in range(mouse_table_reference.shape[0]):
         # only include structures with volumes here
         if (not np.isnan(mouse_table_reference.loc[iVolume, 'VolumeInteger'])) & isinstance(
                 mouse_table_reference.loc[iVolume, 'structure_id_path_custom'], str):
-            for iParent in list(map(int, mouse_table_reference.loc[iVolume, 'structure_id_path_custom'].strip('][').split(', ')))[:-1]:
+            for iParent in list(
+                    map(int, mouse_table_reference.loc[iVolume, 'structure_id_path_custom'].strip('][').split(', ')))[
+                           :-1]:
                 # Add volume to each parent
                 mouse_table_reference.loc[mouse_table_reference['id_custom'] == iParent, 'Volume'] += \
-                mouse_table_reference.loc[iVolume, 'Volume']
+                    mouse_table_reference.loc[iVolume, 'Volume']
                 mouse_table_reference.loc[mouse_table_reference['id_custom'] == iParent, 'VoxelNumber'] += \
-                mouse_table_reference.loc[iVolume, 'VoxelNumber']
+                    mouse_table_reference.loc[iVolume, 'VoxelNumber']
+    rootVol = np.array(mouse_table_reference.loc[mouse_table_reference['name'] == 'root', 'Volume'])
+    print(f'Root volume after addition is {rootVol}')
 
     return mouse_table_reference
-
 
 
 # Define
@@ -69,23 +81,25 @@ data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
 data_new_path = os.path.join('Data', 'Mouse', 'Processed')
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 analysis_path = os.path.join('Data', 'Mouse', 'Analysis')
+pername_merged_path = os.path.join('..', 'cell-counting', 'pername_merged_table.csv')
 mouse_path_list = glob.glob(os.path.join(data_path, '*', '*invsynned*cerebellum_lobular.nii.gz'))
-comb_str = '' #########################################
-reference_structure_path = os.path.join(reference_path, 'structure_graph_plus' + comb_str + '.csv')
+comb_str = 'main'  #########################################
+reference_structure_path = os.path.join(reference_path, 'structure_graph_plus' + '_' + comb_str + '.csv')
 voxel_reference_volume = 0.000125
 voxel_volume = 0.000125
-annotation_path = os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')
+annotation_path = os.path.join(reference_path, 'annotation_25_reoriented.nii.gz')
 annotation_image = nib.load(annotation_path)
 annotation = annotation_image.get_fdata()
-nIterBootstrap = 10000
+annotation_lowLevel_list = list(np.unique(annotation))
+nIterBootstrap = 1  #####################################################################################################
 volInt_hemispheres = [1101, 354, 511, 219, 1041]
+sn_ids = [54, 268, 2001] # compact and reticular respectively
 
 # Follows
 nMouse = len(mouse_path_list)
 structure = pd.read_csv(reference_structure_path)
+pername_merged_table = pd.read_csv(pername_merged_path)
 Path(os.path.join(analysis_path, 'perstructure')).mkdir(parents=True, exist_ok=True)
-
-
 
 # Reference volumes
 reference_table = image2volumetable(annotation_path, voxel_reference_volume)
@@ -117,7 +131,7 @@ reference_table.loc[reference_table['name'] == 'cerebellum hemispheres', 'Volume
     float(reference_table.loc[reference_table['name'] == 'Flocculus', 'Volume'])
 annotation_hemispheres = np.where(np.isin(annotation, volInt_hemispheres))
 annotation_brain = np.where(annotation > 0)
-mid_LR_image = annotation.shape[0]/2
+mid_LR_image = annotation.shape[0] / 2
 mid_LR_hemispheres = np.mean(annotation_hemispheres[0])
 mid_LR_brain = np.mean(annotation_brain[0])
 # print(f'Mid LR of hemispheres = {mid_LR_hemispheres}, '
@@ -128,24 +142,42 @@ reference_table.loc[reference_table['name'] == 'cerebellum left hemisphere', 'Vo
 reference_table.loc[reference_table['name'] == 'cerebellum right hemisphere', 'Volume'] = \
     np.sum(annotation_hemispheres[0] > mid_LR_brain) * voxel_reference_volume
 
-
-
 reference_table.to_csv(os.path.join(analysis_path, 'reference_volumes_mouse'))
 
 reference_table['in_cerebellum'] = False
+reference_table['nPath'] = 0
 for iVolume in range(reference_table.shape[0]):
     if isinstance(reference_table.loc[iVolume, 'structure_id_path_custom'], str):
-        reference_table.loc[iVolume, 'in_cerebellum'] = 1186 in list(map(int, reference_table.loc[iVolume, 'structure_id_path_custom'].strip('][').split(', ')))
-reference_cerebellum_table = reference_table[reference_table['in_cerebellum']][['name', 'acronym', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
+        structure_id_path_custom = list(map(int, reference_table.loc[iVolume, 'structure_id_path_custom'].strip('][').split(', ')))
+        reference_table.loc[iVolume, 'in_cerebellum'] = 1186 in structure_id_path_custom
+        reference_table.loc[iVolume, 'nPath'] = len(structure_id_path_custom)
+reference_cerebellum_table = reference_table[reference_table['in_cerebellum']][
+    ['name', 'acronym', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
 reference_cerebellum_table.to_csv(os.path.join(analysis_path, 'reference_volumes_cerebellum_mouse.csv'))
-
 
 reference_table['in_sn'] = False
 for iVolume in range(reference_table.shape[0]):
     if isinstance(reference_table.loc[iVolume, 'structure_id_path_custom'], str):
-        reference_table.loc[iVolume, 'in_sn'] = 2001 in list(map(int, reference_table.loc[iVolume, 'structure_id_path_custom'].strip('][').split(', ')))
-reference_sn_table = reference_table[reference_table['in_sn']][['name', 'acronym', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
+        reference_table.loc[iVolume, 'in_sn'] = 2001 in list(
+            map(int, reference_table.loc[iVolume, 'structure_id_path_custom'].strip('][').split(', ')))
+reference_sn_table = reference_table[reference_table['in_sn']][
+    ['name', 'acronym', 'id_custom', 'structure_id_path_custom', 'VoxelNumber', 'Volume']]
 reference_sn_table.to_csv(os.path.join(analysis_path, 'reference_volumes_sn_mouse.csv'))
+
+# get lowest level volume integers
+lowestLevel_volInt_list = list(reference_table.loc[reference_table['isLowestLevel'], 'VolumeInteger'])
+lowestLevel_volInt_ce_list = list()
+lowestLevel_volInt_mi_list = list()
+for volInt in lowestLevel_volInt_list:
+    id_custom_path = list(map(int, reference_table.loc[reference_table['id_custom'] == volInt, 'structure_id_path_custom'].iloc[0].strip('][').split(', ')))
+    if np.isin(1186, id_custom_path):
+        lowestLevel_volInt_ce_list.append(int(volInt))
+    if np.isin(834, id_custom_path):
+        lowestLevel_volInt_mi_list.append(int(volInt))
+lowestLevel_volInt_ce_list = list(set(lowestLevel_volInt_ce_list) - set([1186]))
+lowestLevel_volInt_mi_list = list(set(lowestLevel_volInt_mi_list) - set([834]))
+lowestLevel_volInt_mice_list = lowestLevel_volInt_mi_list + lowestLevel_volInt_ce_list
+lowestLevel_volInt_ceSN_list = lowestLevel_volInt_ce_list + [54, 268] # 1241 is VTA, this is manually corrected selection, might include some higher order structures still however
 
 
 
@@ -155,7 +187,7 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     print(Mouse)
     print(subject)
     mouse_table = image2volumetable(Mouse, voxel_volume)
-    mouse_table.to_csv(os.path.join(analysis_path, subject+'_volumes_mouse.csv'))
+    mouse_table.to_csv(os.path.join(analysis_path, subject + '_volumes_mouse.csv'))
 
     mouse_table['Mouse'] = subject
     mouse_table['Genotype'] = subject.split('_')[0]
@@ -174,7 +206,6 @@ output_table_all = pd.merge(left=mouse_table_all,
                             left_on=['id_custom', 'name'],
                             right_on=['id_custom', 'name'],
                             how='right')
-
 
 ####################################################### are subjects the same for index and assigned?
 # Fill in reference additional reference volumes explicitly
@@ -200,7 +231,8 @@ output_table_all.loc[output_table_all['name'] == 'cerebellum hemispheres', 'Volu
     np.array(output_table_all.loc[output_table_all['name'] == 'Paramedian lobule', 'Volume']) + \
     np.array(output_table_all.loc[output_table_all['name'] == 'Crus 1', 'Volume']) + \
     np.array(output_table_all.loc[output_table_all['name'] == 'Crus 2', 'Volume']) + \
-    np.array(output_table_all.loc[output_table_all['name'] == 'Copula pyramidis', 'Volume']) # [1101, 354, 511, 219, 1041]
+    np.array(
+        output_table_all.loc[output_table_all['name'] == 'Copula pyramidis', 'Volume'])  # [1101, 354, 511, 219, 1041]
 for iMouse, Mouse in enumerate(mouse_path_list):
     subject = Mouse.split(os.path.sep)[-2]
     print(f'LR hemisphere calculation, subject = {subject}')
@@ -234,14 +266,12 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     # print(f'center_flirted_brain = {mouse_flirted_brain_center}, ')
     # print(f'center_flirted_hemispheres = {mouse_flirted_hemisphere_center}')
 
-
-
     annotation_hemispheres_L = np.empty(len(annotation_hemispheres[0]))
     annotation_hemispheres_L[:] = False
     for iPoint in range(len(annotation_hemispheres[0])):
         iPoint_voxCoord = np.array([annotation_hemispheres[0][iPoint],
-                                  annotation_hemispheres[1][iPoint],
-                                  annotation_hemispheres[2][iPoint], 1])
+                                    annotation_hemispheres[1][iPoint],
+                                    annotation_hemispheres[2][iPoint], 1])
         iPoint_Coord = mouse_image.affine.dot(iPoint_voxCoord)
         # iPoint_Coord[3] = 1
         iPoint_flirted_Coord = flirt.dot(iPoint_Coord)
@@ -257,8 +287,6 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     output_table_all.loc[np.logical_and(output_table_all['name'] == 'cerebellum right hemisphere',
                                         output_table_all['Mouse'] == subject), 'Volume'] = \
         np.sum(annotation_hemispheres_R) * voxel_reference_volume
-
-
 
     # annotation_hemispheres_flirtedRigid = annotation_hemispheres[0]
     # annotation_flirted_path = os.path.join(data_path, subject, 'FLIRT', subject + '_inmasked_flirted.nii.gz') ######## different reference used! change to reference
@@ -287,57 +315,174 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     # with open(mouse_masked_flirted_syn_path, 'rb') as f:
     #     [mapping, metric, level_iters, sdr] = load(f, compression='gzip')
 
-
-
-output_table_all['VolumeNormalized'] = output_table_all['Volume']/output_table_all['rVolume']
+output_table_all['VolumeNormalized'] = output_table_all['Volume'] / output_table_all['rVolume']
 
 # For each subject add mask volumes for  normalization
 output_table_all['rootVolume'] = np.nan
 for subject in np.unique(output_table_all['Mouse']):
-    output_table_all.loc[output_table_all['Mouse'] == subject, 'rootVolume'] = float(output_table_all.loc[np.logical_and(output_table_all['Mouse'] == subject, output_table_all['name'] == 'root'), 'Volume'])
+    output_table_all.loc[output_table_all['Mouse'] == subject, 'rootVolume'] = float(output_table_all.loc[
+                                                                                         np.logical_and(
+                                                                                             output_table_all[
+                                                                                                 'Mouse'] == subject,
+                                                                                             output_table_all[
+                                                                                                 'name'] == 'root'), 'Volume'])
 
-output_table_all.to_csv(os.path.join(analysis_path, 'all_volumes_mouse.csv'))
+output_table_all['VolumeRootNormalized'] = output_table_all['Volume'] / output_table_all['rootVolume']
 
-output_table_all['VolumeRootNormalized'] = output_table_all['Volume']/output_table_all['rootVolume']
 
-output_table_cerebellum = pd.merge(left=output_table_all, right=reference_table[['id_custom', 'in_cerebellum']],
-         left_on='id_custom', right_on='id_custom')
+# Writing output_table_all
+output_table_all_copy = output_table_all.copy()
+output_table_all = pd.merge(left=output_table_all, right=reference_table[['id_custom', 'in_cerebellum', 'nPath']],
+                            left_on='id_custom', right_on='id_custom') # add in_cerebellum column
+
+# For each structure calculate WT_30_female percentual difference
+# For each structure calculate mean with or without WT_30 and normalize VolumeRootNormalized with mean
+grouped = output_table_all.groupby('name')
+group_list = list()
+group_WTmean_list = list()
+for name, group in grouped:
+    # print(f'name={name}')
+
+    vol_WT30 = group.loc[group['Mouse'] == 'WT_30_female', 'Volume'].iloc[0]
+    vol_mean = np.mean(group.loc[np.logical_and(np.logical_and(group['Mouse'] != 'WT_30_female', group['Genotype'] == 'WT'), group['Mouse'] != 'WT_50'), 'Volume'])
+    perc_diff = ((vol_mean - vol_WT30) / vol_mean) * 100
+
+    # get id_custom for name
+    id_custom = group['id_custom'].iloc[0]
+    acronym = group['acronym'].iloc[0]
+
+    group_list.append(pd.DataFrame({'name': [name],
+                                    'id_custom': [id_custom],
+                                    'WT30_perc_diff' : [perc_diff]}))
+
+    if group['in_cerebellum'].iloc[0] | np.any(np.isin(group['id_custom'], sn_ids)):
+        WT_mean = np.mean(group.loc[group['Genotype'] == 'WT', 'VolumeRootNormalized'])
+        WT_30_excluded = False
+    else:
+        WT_mean = np.mean(group.loc[np.logical_and(group['Mouse'] != 'WT_30_female', group['Genotype'] == 'WT'), 'VolumeRootNormalized'])
+        WT_30_excluded = True
+    VolumeRootNormalizedWTmean = list((group['VolumeRootNormalized'] / WT_mean) * 100)
+
+    name_list = list()
+    id_custom_list = list()
+    WT_30_excluded_list = list()
+    WT_mean_list = list()
+    for i in range(len(VolumeRootNormalizedWTmean)):
+        name_list.append(name)
+        id_custom_list.append(id_custom)
+        WT_30_excluded_list.append(WT_30_excluded)
+        WT_mean_list.append(WT_mean)
+    group_WTmean_list.append(pd.DataFrame({'Mouse': list(group['Mouse']),
+                                    'name': name_list,
+                                    'id_custom': id_custom_list,
+                                    'WT_mean': WT_mean_list,
+                                    'WT_30_excluded': WT_30_excluded_list,
+                                    'VolumeRootNormalizedWTmean' : VolumeRootNormalizedWTmean}))
+
+group_table = pd.concat(group_list, ignore_index=True)
+group_table_path = os.path.join(analysis_path, 'WT30_perc_diff.csv')
+print(f'Writing {group_table_path}')
+group_table = group_table.sort_values(by='WT30_perc_diff')
+group_table = group_table[np.logical_not(np.isnan(group_table['WT30_perc_diff']))]
+group_table = group_table[group_table['id_custom'] != 0]
+group_table.to_csv(group_table_path)
+    # print(f'group={group}')
+group_WTmean_table = pd.concat(group_WTmean_list, ignore_index=True)
+output_table_all = pd.merge(left=output_table_all, right=group_WTmean_table[['Mouse', 'id_custom', 'WT_mean', 'WT_30_excluded',
+                                                                             'VolumeRootNormalizedWTmean']],
+                            left_on=['Mouse', 'id_custom'], right_on=['Mouse', 'id_custom'])
+
+
+# Filter out non-cerebellar structures in output_table_all
+
+
+# Filter out WT_30 non-cerebellum and SN, or in other words remove WT_30 while keeping all cerebellum and SN
+ce_or_sn = np.logical_or(output_table_all['in_cerebellum'], np.isin(output_table_all['id_custom'], sn_ids))
+output_table_all_withWT30_path = os.path.join(analysis_path, 'all_volumes_mouse_withWT30.csv')
+output_table_all.to_csv(output_table_all_withWT30_path)
+output_table_all = output_table_all[np.logical_or(output_table_all['Mouse'] != 'WT_30_female', ce_or_sn)] ########################
+# output_table_all = output_table_all[output_table_all['Mouse'] != 'WT_30_female'] ########################
+output_table_all_path = os.path.join(analysis_path, 'all_volumes_mouse.csv')
+print(f'Writing {output_table_all_path}')
+output_table_all.to_csv(output_table_all_path)
+
+output_table_cerebellum = pd.merge(left=output_table_all_copy, right=reference_table[['id_custom', 'in_cerebellum']],
+                                   left_on='id_custom', right_on='id_custom')
 output_table_cerebellum = output_table_cerebellum[output_table_cerebellum['in_cerebellum']]
 output_table_cerebellum = output_table_cerebellum[output_table_cerebellum['rVolume'] != 0]
 output_table_cerebellum = output_table_cerebellum.drop('in_cerebellum', 1)
 output_table_cerebellum.to_csv(os.path.join(analysis_path, 'cerebellum_volumes_mouse.csv'))
 
 output_table_cerebellum = pd.merge(left=output_table_all, right=reference_table[['id_custom', 'in_sn']],
-         left_on='id_custom', right_on='id_custom')
+                                   left_on='id_custom', right_on='id_custom')
 output_table_cerebellum = output_table_cerebellum[output_table_cerebellum['in_sn']]
 output_table_cerebellum = output_table_cerebellum.drop('in_sn', 1)
 output_table_cerebellum.to_csv(os.path.join(analysis_path, 'sn_volumes_mouse.csv'))
 
-
 # In volume table, go through each structure and determine the p-value between genotypes, create a new p-value table
-pername_table_path_list = [os.path.join(analysis_path, 'pername_1_volumes_mouse' + comb_str + '.csv'),
-                           os.path.join(analysis_path, 'pername_2_volumes_mouse' + comb_str + '.csv')]
-pername_cerebellum_table_path_list = [os.path.join(analysis_path, 'pername_1_cerebellum_volumes_mouse' + comb_str + '.csv'),
-                                      os.path.join(analysis_path, 'pername_2_cerebellum_volumes_mouse' + comb_str + '.csv')]
-pername_sn_table_path_list = [os.path.join(analysis_path, 'pername_1_sn_volumes_mouse' + comb_str + '.csv'),
-                              os.path.join(analysis_path, 'pername_2_sn_volumes_mouse' + comb_str + '.csv')]
-for iIncludeInTest in [1, 2]:
+analysis_pername_path = os.path.join(analysis_path, 'pername_selWT30')
+os.makedirs(analysis_pername_path, exist_ok=True)
+pername_table_path_list = [os.path.join(analysis_pername_path, 'pername_volumes_mouse.csv'),
+                           os.path.join(analysis_pername_path, 'pername_1_volumes_mouse_' + comb_str + '.csv'),
+                           os.path.join(analysis_pername_path, 'pername_2_volumes_mouse_' + comb_str + '.csv'),
+                           os.path.join(analysis_pername_path, 'pername_3_volumes_mouse_' + comb_str + '.csv'),
+                           os.path.join(analysis_pername_path, 'pername_mi_volumes_mouse_' + comb_str + '.csv'),
+                           os.path.join(analysis_pername_path, 'pername_ce_volumes_mouse_' + comb_str + '.csv'),
+                           os.path.join(analysis_pername_path, 'pername_mice_volumes_mouse_' + comb_str + '.csv'),
+                           os.path.join(analysis_pername_path, 'pername_ceSN_volumes_mouse_' + comb_str + '.csv')]
+pername_cerebellum_table_path_list = [os.path.join(analysis_pername_path, 'pername_cerebellum_volumes_mouse.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_1_cerebellum_volumes_mouse_' + comb_str + '.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_2_cerebellum_volumes_mouse_' + comb_str + '.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_3_cerebellum_volumes_mouse_' + comb_str + '.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_mi_cerebellum_volumes_mouse_' + comb_str + '.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_ce_cerebellum_volumes_mouse_' + comb_str + '.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_mice_cerebellum_volumes_mouse_' + comb_str + '.csv'),
+                                      os.path.join(analysis_pername_path,
+                                                   'pername_ceSN_cerebellum_volumes_mouse_' + comb_str + '.csv')]
+pername_sn_table_path_list = [os.path.join(analysis_pername_path, 'pername_sn_volumes_mouse.csv'),
+                              os.path.join(analysis_pername_path, 'pername_1_sn_volumes_mouse_' + comb_str + '.csv'),
+                              os.path.join(analysis_pername_path, 'pername_2_sn_volumes_mouse_' + comb_str + '.csv'),
+                              os.path.join(analysis_pername_path, 'pername_3_sn_volumes_mouse_' + comb_str + '.csv'),
+                              os.path.join(analysis_pername_path, 'pername_mi_sn_volumes_mouse_' + comb_str + '.csv'),
+                              os.path.join(analysis_pername_path, 'pername_ce_sn_volumes_mouse_' + comb_str + '.csv'),
+                              os.path.join(analysis_pername_path, 'pername_mice_sn_volumes_mouse_' + comb_str + '.csv'),
+                              os.path.join(analysis_pername_path, 'pername_ceSN_sn_volumes_mouse_' + comb_str + '.csv')]
+for iIncludeInTest in [0, 1, 2, 3, 4, 5, 6, 7]: # 4 5 6 add, ce-mid, ce and mid
+    print(f'iIncludeInTest = {iIncludeInTest}')
     mouse_table_pername_list = list()
-    mouse_table_all_nobackground = output_table_all.loc[np.logical_not(pd.isnull(mouse_table_all['name']))]
-    mouse_table_all_nobackground = mouse_table_all_nobackground[mouse_table_all_nobackground['include_in_test'] == iIncludeInTest]
+    mouse_table_all_nobackground = output_table_all.loc[np.logical_not(pd.isnull(output_table_all['name']))]
+    if (iIncludeInTest == 1) | (iIncludeInTest == 2):
+        mouse_table_all_nobackground = mouse_table_all_nobackground[
+            mouse_table_all_nobackground['include_in_test'] == iIncludeInTest]
+    elif iIncludeInTest == 3:
+        mouse_table_all_nobackground = mouse_table_all_nobackground[np.isin(mouse_table_all_nobackground['id_custom'], lowestLevel_volInt_list)]
+    elif iIncludeInTest == 4:
+        mouse_table_all_nobackground = mouse_table_all_nobackground[np.isin(mouse_table_all_nobackground['id_custom'], lowestLevel_volInt_mi_list)]
+    elif iIncludeInTest == 5:
+        mouse_table_all_nobackground = mouse_table_all_nobackground[np.isin(mouse_table_all_nobackground['id_custom'], lowestLevel_volInt_ce_list)]
+    elif iIncludeInTest == 6:
+        mouse_table_all_nobackground = mouse_table_all_nobackground[np.isin(mouse_table_all_nobackground['id_custom'], lowestLevel_volInt_mice_list)]
+    elif iIncludeInTest == 7:
+        mouse_table_all_nobackground = mouse_table_all_nobackground[np.isin(mouse_table_all_nobackground['id_custom'], lowestLevel_volInt_ceSN_list)]
     # mouse_table_all.loc[pd.isnull(mouse_table_all['name']), 'name'] = 'background'
     name_uniq = np.unique(np.array(mouse_table_all_nobackground['name'].astype('category')))
     nName = len(name_uniq)
     for nameStruct in name_uniq:
         mouse_table_nameStruct = mouse_table_all_nobackground[mouse_table_all_nobackground['name'] == nameStruct]
-        mouse_table_nameStruct_WT = mouse_table_nameStruct.loc[mouse_table_all_nobackground['Genotype'] == 'WT']
-        mouse_table_nameStruct_KO = mouse_table_nameStruct.loc[mouse_table_all_nobackground['Genotype'] == 'KO']
+        mouse_table_nameStruct_WT = mouse_table_nameStruct.loc[mouse_table_nameStruct['Genotype'] == 'WT']
+        mouse_table_nameStruct_KO = mouse_table_nameStruct.loc[mouse_table_nameStruct['Genotype'] == 'KO']
         [t_stat, p_val] = ttest_ind(mouse_table_nameStruct_WT['Volume'],
-            mouse_table_nameStruct_KO['Volume'],
-            equal_var=False)
+                                    mouse_table_nameStruct_KO['Volume'],
+                                    equal_var=False)
         [t_stat_RN, p_val_RN] = ttest_ind(mouse_table_nameStruct_WT['VolumeRootNormalized'],
-            mouse_table_nameStruct_KO['VolumeRootNormalized'],
-            equal_var=False)
+                                          mouse_table_nameStruct_KO['VolumeRootNormalized'],
+                                          equal_var=False)
         mean_WT = np.mean(mouse_table_nameStruct_WT['Volume'])
         mean_KO = np.mean(mouse_table_nameStruct_KO['Volume'])
         std_WT = np.std(mouse_table_nameStruct_WT['Volume'])
@@ -352,11 +497,11 @@ for iIncludeInTest in [1, 2]:
         std_KO_RN = np.std(mouse_table_nameStruct_KO['VolumeRootNormalized'])
         nWT = len(mouse_table_nameStruct_WT['Volume'])
         nKO = len(mouse_table_nameStruct_KO['Volume'])
-        N = nWT+nKO
+        N = nWT + nKO
         # print(f'nWT{nWT}, nKO={nKO}, N={N}')
-        S_p = np.sqrt(((nWT - 1) * np.power(std_WT, 2) + (nKO - 1) * np.power(std_KO, 2))/(N - 2))
-        S_p_AN = np.sqrt(((nWT - 1) * np.power(std_WT_AN, 2) + (nKO - 1) * np.power(std_KO_AN, 2))/(N - 2))
-        S_p_RN = np.sqrt(((nWT - 1) * np.power(std_WT_RN, 2) + (nKO - 1) * np.power(std_KO_RN, 2))/(N - 2))
+        S_p = np.sqrt(((nWT - 1) * np.power(std_WT, 2) + (nKO - 1) * np.power(std_KO, 2)) / (N - 2))
+        S_p_AN = np.sqrt(((nWT - 1) * np.power(std_WT_AN, 2) + (nKO - 1) * np.power(std_KO_AN, 2)) / (N - 2))
+        S_p_RN = np.sqrt(((nWT - 1) * np.power(std_WT_RN, 2) + (nKO - 1) * np.power(std_KO_RN, 2)) / (N - 2))
         cohenD = (mean_WT - mean_KO) / S_p
         cohenD_AN = (mean_WT_AN - mean_KO_AN) / S_p_AN
         cohenD_RN = (mean_WT_RN - mean_KO_RN) / S_p_RN
@@ -379,9 +524,9 @@ for iIncludeInTest in [1, 2]:
             mean_KO_BS = np.mean(KO_BS)
             std_WT_BS = np.std(WT_BS)
             std_KO_BS = np.std(KO_BS)
-            S_p = np.sqrt(((nWT - 1) * np.power(std_WT_BS, 2) + (nKO - 1) * np.power(std_KO_BS, 2))/(nKO + nWT - 2))
+            S_p = np.sqrt(((nWT - 1) * np.power(std_WT_BS, 2) + (nKO - 1) * np.power(std_KO_BS, 2)) / (nKO + nWT - 2))
             S_a = np.sqrt((np.power(std_WT, 2) + np.power(std_KO, 2)) / 2)
-            cohenD_BS[iBS] = ((mean_WT_BS - mean_KO_BS)/S_a)*hedge_correction
+            cohenD_BS[iBS] = ((mean_WT_BS - mean_KO_BS) / S_a) * hedge_correction
 
             WT_RN_BS = np.random.normal(mean_WT_RN, std_WT_RN, nWT)
             KO_RN_BS = np.random.normal(mean_KO_RN, std_KO_RN, nKO)
@@ -389,9 +534,10 @@ for iIncludeInTest in [1, 2]:
             mean_KO_RN_BS = np.mean(KO_RN_BS)
             std_WT_RN_BS = np.std(WT_RN_BS)
             std_KO_RN_BS = np.std(KO_RN_BS)
-            S_p_RN = np.sqrt(((nWT - 1) * np.power(std_WT_RN_BS, 2) + (nKO - 1) * np.power(std_KO_RN_BS, 2))/(nKO + nWT - 2))
+            S_p_RN = np.sqrt(
+                ((nWT - 1) * np.power(std_WT_RN_BS, 2) + (nKO - 1) * np.power(std_KO_RN_BS, 2)) / (nKO + nWT - 2))
             S_a_RN = np.sqrt((np.power(std_WT_RN, 2) + np.power(std_KO_RN, 2)) / 2)
-            cohenD_RN_BS[iBS] = ((mean_WT_RN_BS - mean_KO_RN_BS)/S_a_RN)*hedge_correction
+            cohenD_RN_BS[iBS] = ((mean_WT_RN_BS - mean_KO_RN_BS) / S_a_RN) * hedge_correction
         cohenD_ac_CI = [np.quantile(cohenD_BS, .025), np.quantile(cohenD_BS, .975)]
         cohenD_RN_ac_CI = [np.quantile(cohenD_RN_BS, .025), np.quantile(cohenD_RN_BS, .975)]
         # cohenD_check = [np.quantile(cohenD_BS, .5), np.median(cohenD_BS)]
@@ -422,44 +568,64 @@ for iIncludeInTest in [1, 2]:
         # mouse_table_nameStruct.to_csv(os.path.join(analysis_path, 'perstructure', nameStruct_filename+'_volumes_mouse.csv'))
 
     mouse_table_pername = pd.concat(mouse_table_pername_list, ignore_index=True)
-    mouse_table_pername['pValBon'] = multipletests(mouse_table_pername['pVal'], method = 'bonferroni')[1]
-    mouse_table_pername['pValFDR'] = multipletests(mouse_table_pername['pVal'], method = 'fdr_bh')[1]
-    mouse_table_pername.loc[mouse_table_pername['name'] != 'root', 'pValBon_BrainNormalized'] = \
-        multipletests(mouse_table_pername.loc[mouse_table_pername['name'] != 'root', 'pVal_BrainNormalized'], method = 'bonferroni')[1]
-    mouse_table_pername.loc[mouse_table_pername['name'] != 'root', 'pValFDR_BrainNormalized'] = \
-        multipletests(mouse_table_pername.loc[mouse_table_pername['name'] != 'root', 'pVal_BrainNormalized'], method = 'fdr_bh')[1]
+    pVal_isnan = np.logical_not(np.isnan(mouse_table_pername['pVal']))
+    mouse_table_pername.loc[pVal_isnan, 'pValBon'] = \
+    multipletests(mouse_table_pername.loc[pVal_isnan, 'pVal'], method='bonferroni')[1]
+    mouse_table_pername.loc[pVal_isnan, 'pValFDR'] = \
+    multipletests(mouse_table_pername.loc[pVal_isnan, 'pVal'], method='fdr_bh')[1]
+    pVal_isnan = np.logical_and(np.logical_not(np.isnan(mouse_table_pername['pVal_BrainNormalized'])),
+                                mouse_table_pername['name'] != 'root')
+    mouse_table_pername.loc[pVal_isnan, 'pValBon_BrainNormalized'] = \
+        multipletests(mouse_table_pername.loc[pVal_isnan, 'pVal_BrainNormalized'], method='bonferroni')[1]
+    mouse_table_pername.loc[pVal_isnan, 'pValFDR_BrainNormalized'] = \
+        multipletests(mouse_table_pername.loc[pVal_isnan, 'pVal_BrainNormalized'], method='fdr_bh')[1]
     mouse_table_pername = mouse_table_pername.sort_values(by='pVal_BrainNormalized')
-    mouse_table_pername = mouse_table_pername.reindex(columns = ['name',
-                                                                 'cohenD', 'cohenD_BrainNormalized',
-                                                                 'cohenD_CI', 'cohenD_BrainNormalized_CI',
-                                                                 't_stat', 'pVal', 'pVal_BrainNormalized',
-                                                                 'pValBon', 'pValBon_BrainNormalized',
-                                                                 'pValFDR', 'pValFDR_BrainNormalized',
-                                                                 'WT_mean', 'WT_std',
-                                                                 'KO_mean', 'KO_std',
-                                                                 'WT_mean_AllenNormalized', 'WT_std_AllenNormalized',
-                                                                 'KO_mean_AllenNormalized', 'KO_std_AllenNormalized',
-                                                                 'WT_mean_BrainNormalized', 'WT_std_BrainNormalized',
-                                                                 'KO_mean_BrainNormalized', 'KO_std_BrainNormalized'])
-    mouse_table_pername.to_csv(pername_table_path_list[iIncludeInTest - 1])
+    mouse_table_pername = mouse_table_pername.reindex(columns=['name',
+                                                               'cohenD', 'cohenD_BrainNormalized',
+                                                               'cohenD_CI', 'cohenD_BrainNormalized_CI',
+                                                               't_stat', 'pVal', 'pVal_BrainNormalized',
+                                                               'pValBon', 'pValBon_BrainNormalized',
+                                                               'pValFDR', 'pValFDR_BrainNormalized',
+                                                               'WT_mean', 'WT_std',
+                                                               'KO_mean', 'KO_std',
+                                                               'WT_mean_AllenNormalized', 'WT_std_AllenNormalized',
+                                                               'KO_mean_AllenNormalized', 'KO_std_AllenNormalized',
+                                                               'WT_mean_BrainNormalized', 'WT_std_BrainNormalized',
+                                                               'KO_mean_BrainNormalized', 'KO_std_BrainNormalized'])
+    mouse_table_pername.to_csv(pername_table_path_list[iIncludeInTest])
 
     # Add id_custom column to pVal table
     mouse_table_pername = pd.merge(left=mouse_table_pername, right=structure.loc[:, ['name', 'id_custom']],
                                    left_on='name', right_on='name')
     mouse_table_pername['pVal_inv'] = np.abs(np.log10(mouse_table_pername['pVal']))
 
-    # Save separate pval table with only cerebellum or only sn
-    pername_table_cerebellum = pd.merge(left=mouse_table_pername, right=reference_table[['id_custom', 'in_cerebellum', 'in_sn']],
-             left_on='id_custom', right_on='id_custom')
-    pername_table_cerebellum = pername_table_cerebellum[pername_table_cerebellum['in_cerebellum']]
-    pername_table_cerebellum = pername_table_cerebellum.drop('in_cerebellum', 1)
-    pername_table_cerebellum.to_csv(pername_cerebellum_table_path_list[iIncludeInTest - 1])
+    # Save separate pval table with only cerebellum or only sn (lowLevel)
+    # if iIncludeInTest == 0:
+    if iIncludeInTest<4:
+        pername_table_in = pd.merge(left=mouse_table_pername,
+                                            right=reference_table[['id_custom', 'in_cerebellum', 'in_sn']],
+                                            left_on='id_custom', right_on='id_custom')
+        ce_logical = np.logical_and(np.logical_and(pername_table_in['in_cerebellum'],
+                                                   np.logical_not(np.isnan(pername_table_in['cohenD']))),
+                                    np.isin(pername_table_in['id_custom'], annotation_lowLevel_list))
+        pername_table_cerebellum = pername_table_in[ce_logical]
+        pername_table_cerebellum = pername_table_cerebellum.drop('in_cerebellum', 1)
+        pername_table_cerebellum['pValBon'] = multipletests(pername_table_cerebellum['pVal'], method='bonferroni')[1]
+        pername_table_cerebellum['pValFDR'] = multipletests(pername_table_cerebellum['pVal'], method='fdr_bh')[1]
+        pername_table_cerebellum['pValBon_BrainNormalized'] = multipletests(pername_table_cerebellum['pVal_BrainNormalized'], method='bonferroni')[1]
+        pername_table_cerebellum['pValFDR_BrainNormalized'] = multipletests(pername_table_cerebellum['pVal_BrainNormalized'], method='fdr_bh')[1]
+        pername_table_cerebellum.to_csv(pername_cerebellum_table_path_list[iIncludeInTest])
 
-    pername_table_cerebellum = pername_table_cerebellum[pername_table_cerebellum['in_sn']]
-    pername_table_cerebellum = pername_table_cerebellum.drop('in_sn', 1)
-    pername_table_cerebellum.to_csv(pername_sn_table_path_list[iIncludeInTest - 1])
-
-
+        sn_logical = np.logical_and(np.logical_and(np.logical_not(pername_table_in['in_cerebellum']),
+                                                   np.logical_not(np.isnan(pername_table_in['cohenD']))),
+                                    np.isin(pername_table_in['id_custom'], annotation_lowLevel_list))
+        pername_table_sn = pername_table_in[sn_logical]
+        pername_table_sn = pername_table_sn.drop('in_sn', 1)
+        pername_table_sn['pValBon'] = multipletests(pername_table_sn['pVal'], method='bonferroni')[1]
+        pername_table_sn['pValFDR'] = multipletests(pername_table_sn['pVal'], method='fdr_bh')[1]
+        pername_table_sn['pValBon_BrainNormalized'] = multipletests(pername_table_sn['pVal_BrainNormalized'], method='bonferroni')[1]
+        pername_table_sn['pValFDR_BrainNormalized'] = multipletests(pername_table_sn['pVal_BrainNormalized'], method='fdr_bh')[1]
+        pername_table_sn.to_csv(pername_sn_table_path_list[iIncludeInTest])
 
 # Create reference images with p-values in the image instead of structure integers
 mean_diff = mouse_table_pername['KO_mean'] - mouse_table_pername['WT_mean']
@@ -474,41 +640,41 @@ for i in range(12):
         map_to = np.array(mouse_table_pername['pVal_inv'])
         annotation_pVal_path = annotation_pVal_path + '_pVal_inv' + '.nii.gz'
     elif i == 2:
-        map_to = np.array(mouse_table_pername['pVal']*(mouse_table_pername['pVal'] < 0.05))
+        map_to = np.array(mouse_table_pername['pVal'] * (mouse_table_pername['pVal'] < 0.05))
         annotation_pVal_path = annotation_pVal_path + '_pVal_sig' + '.nii.gz'
     elif i == 3:
-        map_to = np.array(mouse_table_pername['pVal_inv']*(mouse_table_pername['pVal'] < 0.05))
+        map_to = np.array(mouse_table_pername['pVal_inv'] * (mouse_table_pername['pVal'] < 0.05))
         annotation_pVal_path = annotation_pVal_path + '_pVal_inv_sig' + '.nii.gz'
     elif i == 4:
-        map_to = np.array(mouse_table_pername['pVal']*(mean_diff > 0))
+        map_to = np.array(mouse_table_pername['pVal'] * (mean_diff > 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_volIncrease' + '.nii.gz'
     elif i == 5:
-        map_to = np.array(mouse_table_pername['pVal']*(mean_diff < 0))
+        map_to = np.array(mouse_table_pername['pVal'] * (mean_diff < 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_volDecrease' + '.nii.gz'
     elif i == 6:
-        map_to = np.array(mouse_table_pername['pVal_inv']*(mean_diff > 0))
+        map_to = np.array(mouse_table_pername['pVal_inv'] * (mean_diff > 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_inv_volIncrease' + '.nii.gz'
     elif i == 7:
-        map_to = np.array(mouse_table_pername['pVal_inv']*(mean_diff < 0))
+        map_to = np.array(mouse_table_pername['pVal_inv'] * (mean_diff < 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_inv_volDecrease' + '.nii.gz'
     elif i == 8:
-        map_to = np.array(mouse_table_pername['pVal']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff > 0))
+        map_to = np.array(mouse_table_pername['pVal'] * (mouse_table_pername['pVal'] < 0.05) * (mean_diff > 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_sig_volIncrease' + '.nii.gz'
     elif i == 9:
-        map_to = np.array(mouse_table_pername['pVal']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff < 0))
+        map_to = np.array(mouse_table_pername['pVal'] * (mouse_table_pername['pVal'] < 0.05) * (mean_diff < 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_sig_volDecrease' + '.nii.gz'
     elif i == 10:
-        map_to = np.array(mouse_table_pername['pVal_inv']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff > 0))
+        map_to = np.array(mouse_table_pername['pVal_inv'] * (mouse_table_pername['pVal'] < 0.05) * (mean_diff > 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_inv_sig_volIncrease' + '.nii.gz'
     elif i == 11:
-        map_to = np.array(mouse_table_pername['pVal_inv']*(mouse_table_pername['pVal'] < 0.05)*(mean_diff < 0))
+        map_to = np.array(mouse_table_pername['pVal_inv'] * (mouse_table_pername['pVal'] < 0.05) * (mean_diff < 0))
         annotation_pVal_path = annotation_pVal_path + '_pVal_inv_sig_volDecrease' + '.nii.gz'
 
     map_to_filt = np.logical_not(np.isnan(map_to))
     map_to_filtered = map_to[map_to_filt]
     map_from_filtered = map_from[map_to_filt]
 
-    annotation_remapped = np.round(annotation) # always annotation so should never be non-integer
+    annotation_remapped = np.round(annotation)  # always annotation so should never be non-integer
     # input = input.astype(int) # always annotation so should never be non-integer
     annotation_remapped_shape = annotation_remapped.shape
     annotation_remapped = annotation_remapped.reshape(-1)
@@ -522,44 +688,124 @@ for i in range(12):
 
 
 
-## Plotting
-# cmap = matplotlib.cm.get_cmap('lines')
-VOIs = ['Substantia nigra, compact part',
-        'Substantia nigra, reticular part',
-        'Lobule II',
-        'cerebal peduncle',
-        'root',
-        'Folium-tuber vermis (VII)',
-        'Lobules IV-V',
-        'Pyramus (VIII)',
-        'Nucleus accumbens',
-        'cerebellum lobules I-III',
-        'cerebellum lobules VI-VII',
-        'cerebellum lobules VIII-IX',
-        'cerebellum vestibulo',
-        'cerebellum hemispheres',
-        'Vermal regions']
+########################################################################################################################
+# Create reference images with expression in the image instead of structure integers
+pername_merged_table['pVal_inv_histo'] = np.abs(np.log10(pername_merged_table['pVal_histo']))
+pername_merged_table = pd.merge(left=pername_merged_table,
+                                right=structure[['acronym', 'id_custom']],
+                                left_on='acronym',
+                                right_on='acronym')
+map_from = pername_merged_table['id_custom']
+annotation_expIso = annotation * np.isin(annotation, map_from) # Everything not included in map_from should be 0 (no expression data for these structures)
+for i in range(7):
+    annotation_expression_path = os.path.join(analysis_path, annotation_path.split(os.sep)[-1].split('.')[0])
+    if i == 0:
+        map_to = np.ones(pername_merged_table.shape[0])
+        annotation_expression_path = annotation_expression_path + '_expression_mask' + '.nii.gz'
+    elif i == 1:
+        map_to = np.array(pername_merged_table['cohenD_histo'])
+        annotation_expression_path = annotation_expression_path + '_expression_cohenD' + '.nii.gz'
+    elif i == 2:
+        map_to = np.array(pername_merged_table['pVal_inv_histo'])
+        annotation_expression_path = annotation_expression_path + '_expression_pValAbsLog' + '.nii.gz'
+    elif i == 3:
+        map_to = np.array(pername_merged_table['pVal_inv_histo']) * np.array(pername_merged_table['cohenD_histo'] > 0)
+        annotation_expression_path = annotation_expression_path + '_expression_pValAbsLog_expDecrease' + '.nii.gz'
+    elif i == 4:
+        map_to = np.array(pername_merged_table['pVal_inv_histo']) * np.array(pername_merged_table['cohenD_histo'] < 0)
+        annotation_expression_path = annotation_expression_path + '_expression_pValAbsLog_expIncrease' + '.nii.gz'
+    elif i == 5:
+        map_to = np.array(pername_merged_table['WT_mean_histo'])
+        annotation_expression_path = annotation_expression_path + '_expression_WT_mean' + '.nii.gz'
+    elif i == 6:
+        map_to = np.array(pername_merged_table['KO_mean_histo'])
+        annotation_expression_path = annotation_expression_path + '_expression_KO_mean' + '.nii.gz'
+
+    map_to_filt = np.logical_not(np.isnan(map_to))
+    map_to_filtered = map_to[map_to_filt]
+    map_from_filtered = map_from[map_to_filt]
+
+    annotation_remapped = np.round(annotation_expIso)  # always annotation so should never be non-integer
+    # input = input.astype(int) # always annotation so should never be non-integer
+    annotation_remapped_shape = annotation_remapped.shape
+    annotation_remapped = annotation_remapped.reshape(-1)
+    annotation_remapped = npi.remap(annotation_remapped, map_from_filtered, map_to_filtered)
+    annotation_remapped = annotation_remapped.reshape(annotation_remapped_shape)
+    # annotation_remapped = remap_3D(annotation, map_from_filtered.astype(int), map_to_filtered)
+
+    output_image = nib.Nifti1Image(annotation_remapped,
+                                   annotation_image.affine)
+    nib.save(output_image, annotation_expression_path)
+########################################################################################################################
+
+
+
+VOIs = list(np.unique(output_table_all['name']))
+figure_folder_path = os.path.join(analysis_path, 'Figures')
+if not os.path.exists(figure_folder_path):
+    os.makedirs(figure_folder_path)
 for iVOI in range(len(VOIs)):
-    ax = output_table_all[output_table_all['name'] == VOIs[iVOI]][['VolumeNormalized', 'Genotype']].boxplot(by=['Genotype'])
+    VOI_fileName = VOIs[iVOI].replace('/', '')
+    output_table_all_VOI = output_table_all[output_table_all['name'] == VOIs[iVOI]]
+    colorList = list()
+    for iSub in range(output_table_all_VOI.shape[0]):
+        if output_table_all_VOI['Genotype'].iloc[iSub] == 'WT':
+            colorList.append((0.12156862745098039, 0.4666666666666667, 0.7058823529411765))
+        else:
+            colorList.append((1.0, 0.4980392156862745, 0.054901960784313725))
 
-    plt.ylabel('Volume Normalized')
-    plt.xlabel('Genotype')
-    plt.title(VOIs[iVOI] + ' volumes')
-    plt.suptitle('') # that's what you're after
-    # ax.set_xticklabels(['WT', 'KO'])
-    # plt.show()
-    plt.savefig(os.path.join(analysis_path, 'Boxplot_'+VOIs[iVOI]+'_ByGenotype'))
+    # Figure 1: Boxplot volumes - absolute
+    # fig1 = plt.figure()
+    # ax = output_table_all_VOI[['VolumeNormalized', 'Genotype']].boxplot(
+    #     by=['Genotype'])
+    #
+    # plt.ylabel('Volume Normalized')
+    # plt.xlabel('Genotype')
+    # plt.title(VOIs[iVOI] + ' volumes')
+    # plt.suptitle('')  # that's what you're after
+    # # ax.set_xticklabels(['WT', 'KO'])
+    # # plt.show()
+    # plt.savefig(os.path.join(figure_folder_path, 'Boxplot_' + VOI_fileName + '_ByGenotype'))
 
-    ax = output_table_all[output_table_all['name'] == VOIs[iVOI]][['VolumeRootNormalized', 'Genotype']].boxplot(by=['Genotype'])
+    # Figure 2: Boxplot volumes - root normalized
+    fig2 = plt.figure()
+    ax = output_table_all_VOI[['VolumeRootNormalized', 'Genotype']].boxplot(
+        by=['Genotype'])
 
     plt.ylabel('Volume Percentage')
     plt.xlabel('Genotype')
     plt.title(VOIs[iVOI] + ' volumes')
-    plt.suptitle('') # that's what you're after
+    plt.suptitle('')  # that's what you're after
     # ax.set_xticklabels(['WT', 'KO'])
     # plt.show()
-    plt.savefig(os.path.join(analysis_path, 'Boxplot_'+VOIs[iVOI]+'_ByGenotype_rootNormalized'))
+    plt.savefig(os.path.join(figure_folder_path, 'Boxplot_' + VOI_fileName + '_ByGenotype_rootNormalized'))
 
+    # Figure 3: Barplot volumes - root normalized
+    fig3 = plt.figure()
+    ax = output_table_all_VOI.plot.bar(x='Mouse',
+                                        y='VolumeRootNormalized',
+                                        rot=60,
+                                        color=colorList)
+    plt.ylabel('Volume Normalized to Root')
+    # plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
+    ax.get_legend().remove()
+    # plt.show()
+    plt.savefig(os.path.join(figure_folder_path, 'Barplot_' + VOI_fileName + '_BySubject_rootNormalized'))
+    plt.close('all')
+
+    # Figure 4: Barplot volumes - absolute reference normalized
+    fig4 = plt.figure()
+    ax = output_table_all_VOI.plot.bar(x='Mouse',
+                                        y='VolumeNormalized',
+                                        rot=60,
+                                        color=colorList)
+    plt.ylabel('Volume Normalized to Reference')
+    # plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
+    ax.get_legend().remove()
+    # plt.show()
+    plt.savefig(os.path.join(figure_folder_path, 'Barplot_' + VOI_fileName + '_BySubject_referenceNormalized'))
+    plt.close('all')
+#######################################################################################################################
 
 
 
@@ -607,10 +853,7 @@ for iVOI in range(len(VOIs)):
 # plt.savefig(os.path.join(analysis_path, 'Boxplot_'+volume_name+'_ByGenotypeSex'))
 
 
-
-
 # Create volume tables per structure
-
 
 
 # # Load files
@@ -621,26 +864,21 @@ for iVOI in range(len(VOIs)):
 # structure_graph = pd.read_csv(allen_structure_table_path_lowdetail)
 
 
-
 # Load remapped structuregraph
 
 # Loop through annotated images
 
-    # Load image
+# Load image
 
-    # Calculate highdetail volumes
+# Calculate highdetail volumes
 
-    # Infer lowdetail volumes
+# Infer lowdetail volumes
 
-    # Creat and save table for each mouse
+# Creat and save table for each mouse
 
 # Combine tables into one great table for all mice in analysis folder
 
 # Plot some boxplot plots
-
-
-
-
 
 
 #
@@ -731,7 +969,6 @@ for iVOI in range(len(VOIs)):
 # allen_table.to_csv(os.path.join(analysis_path, 'allen_table.csv'))
 
 
-
 # ## Compute volumes for flirted allen reference
 # allen_flirted_table = image2volumetable(allen_image_flirted, voxel_AMBMC_volume)
 # allen_flirted_table['Mouse'] = 'allen_flirted'
@@ -745,4 +982,3 @@ for iVOI in range(len(VOIs)):
 # # for i in range(100):
 # #     print(i)
 # #     print(np.any(pd.DataFrame(oapi.get_structures(i+1))['id']==182305696))
-

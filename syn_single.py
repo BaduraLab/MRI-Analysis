@@ -12,36 +12,51 @@ from dipy.viz import regtools
 import scipy.io
 import glob
 import nibabel as nib
-import plotly.graph_objects as go
 from scipy import spatial
 import datetime
+# import plotly.graph_objects as go
 
 # Define
-allen_resolution = 50
-reference_path = '/usr/local/fsl/data/standard/allen_new'
+allen_resolution = 25
+# reference_path = '/usr/local/fsl/data/standard/allen_new'
+reference_path = os.path.join('Data', 'Mouse', 'Reference')
+data_path = os.path.join('Data', 'Mouse', 'Processed')
 reference_image_path = os.path.join(reference_path, 'average_template_'+str(allen_resolution)+'_to_AMBMC_flirted.nii.gz')
 annotation_image_path = os.path.join(reference_path, 'annotation_'+str(allen_resolution)+'_to_AMBMC_flirted.nii.gz')
 
-data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
-subjects = glob.glob(data_path+'/*/')
-subjects = [s.split('/')[-2] for s in subjects]
-subjects = subjects[2::] # remove WT_50, which was already synned with a resolution of 25 micrometers
+# data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
+mouse_path_list = glob.glob(os.path.join(data_path, '*'))
+# mouse_path_list = [s.split('/')[-2] for s in mouse_path_list]
+# subjects = subjects[2::] # remove WT_50, which was already synned with a resolution of 25 micrometers
 
-for iSubject in range(len(subjects)):
+# for iSubject in range(len(subjects)):
+mouse_path_list = [mouse_path_list[-3]]
+for iMousePath, MousePath in enumerate(mouse_path_list):
+    start_time = datetime.datetime.now()
+    print(iMousePath)
+    print(iMousePath)
+    print(MousePath)
+    print(f'Start time = {start_time}')
 
     # Define per suject
-    subject = subjects[iSubject]
-    input_path = os.path.join(data_path, subject)
-    FLIRT_folder_path = os.path.join(input_path, 'FLIRT')
-    mask_path = glob.glob(FLIRT_folder_path + '/*_bin.mask.nii.gz')[0]
-    FLIRT_path = glob.glob(FLIRT_folder_path + '/*warpaffine.mat')[0]
-    FLIRT_inverted_path = glob.glob(FLIRT_folder_path + '/*warpaffine_inverted.mat')[0]
-    input_image_path = os.path.join(FLIRT_folder_path, subject+'_inmasked_flirted.nii.gz')
-    input_original_image_path = os.path.join(FLIRT_folder_path, subject+'.nii.gz')
-    input_invwarped_path = os.path.join(input_path, subject+'_synned.nii.gz')
-    annotation_invwarped_path = os.path.join(input_path, 'allen_annotation_invsynned_to_'+subject+'_flirted.nii.gz')
-    annotation_subject_path = os.path.join(input_path, 'allen_annotation_invsynned_to_'+subject+'.nii.gz')
-    annotation_subject_adjusted_path = os.path.join(input_path, 'allen_annotation_invsynned_to_'+subject+'_adjusted.nii.gz')
+    mouse_string = MousePath.split(os.sep)[-1]
+    # subject = subjects[iSubject]
+    # input_path = os.path.join(data_path, mouse_string)
+    FLIRT_folder_path = os.path.join(MousePath, 'FLIRT')
+    # mask_path = glob.glob(FLIRT_folder_path + '/*.mask.nii.gz')[0]
+    # FLIRT_path = glob.glob(FLIRT_folder_path + '/*warpaffine.mat')[0]
+    # FLIRT_inverted_path = glob.glob(FLIRT_folder_path + '/*warpaffine_inverted.mat')[0]
+    input_image_path = os.path.join(MousePath, mouse_string+'_reoriented.nii.gz')
+    mask_path = os.path.join(MousePath, mouse_string + '_mask_t=500_v=380_k=6.mask.nii.gz')
+    mouse_masked_path = os.path.join(MousePath, mouse_string+'_masked.nii.gz')
+    mouse_masked_flirted_path = os.path.join(MousePath, mouse_string+'_flirted.nii.gz')
+    mouse_masked_flirt_path = os.path.join(MousePath, mouse_string+'_flirt.mat')
+    mouse_masked_invflirt_path = os.path.join(MousePath, mouse_string+'_invflirt.mat')
+    input_original_image_path = os.path.join(MousePath, mouse_string+'.nii.gz')
+    input_invwarped_path = os.path.join(MousePath, mouse_string+'_synned.nii.gz')
+    annotation_invwarped_path = os.path.join(MousePath, 'allen_annotation_invsynned_to_'+mouse_string+'_flirted.nii.gz')
+    annotation_subject_path = os.path.join(MousePath, 'allen_annotation_invsynned_to_'+mouse_string+'.nii.gz')
+    annotation_subject_adjusted_path = os.path.join(MousePath, 'allen_annotation_invsynned_to_'+mouse_string+'_adjusted.nii.gz')
 
     # Load images
     reference_image = nib.load(reference_image_path)
@@ -53,17 +68,49 @@ for iSubject in range(len(subjects)):
 
 
 
+    # Mask mouse image
+    mask_image = nib.load(mask_path)
+    mask = mask_image.get_fdata()
+    mask = mask / np.max(mask)
+    print('mask image')
+    mouse_masked = input * mask
+    mouse_masked_image = nib.Nifti1Image(mouse_masked, input_image.affine, input_image.header)
+    nib.save(mouse_masked_image, mouse_masked_path)
+
+    # # FLIRT subject to reference
+    # print('FLIRT rigid start')
+    # os.system('flirt -in ' + mouse_masked_path + ' \
+    #                  -ref ' + reference_template_path + ' \
+    #                  -out ' + mouse_masked_flirtedRigid_path + ' \
+    #                  -omat ' + mouse_masked_flirtRigid_path + ' \
+    #                  -dof ' + '6' + ' \
+    #                  -verbose 0')    # FLIRT subject to reference
+
+    # FLIRT rigidly transformed subject to reference
+    print('FLIRT affine start')
+    os.system('flirt -in ' + mouse_masked_path + ' \
+                     -ref ' + reference_image_path + ' \
+                     -out ' + mouse_masked_flirted_path + ' \
+                     -omat ' + mouse_masked_flirt_path + ' \
+                     -verbose 0')
+    mouse_masked_flirted_image = nib.load(mouse_masked_flirted_path)
+    mouse_masked_flirted = mouse_masked_flirted_image.get_fdata()
+
+
+
+
+
     # syn
     metric = CCMetric(3)
     level_iters = [10, 10, 5, 5, 5]
-    print(iSubject)
+    print(iMousePath)
     print(datetime.datetime.now())
     sdr = SymmetricDiffeomorphicRegistration(metric, level_iters)
 
-    mapping = sdr.optimize(static=reference, moving=input,
+    mapping = sdr.optimize(static=reference, moving=mouse_masked_flirted,
                            static_grid2world=reference_image.get_qform(), moving_grid2world=input_image.get_qform())
 
-    warped_image = mapping.transform(input)
+    warped_image = mapping.transform(mouse_masked_flirted)
 
     warped_reference = mapping.transform_inverse(reference)
 
@@ -134,10 +181,12 @@ for iSubject in range(len(subjects)):
     # fig4.show()
 
     # Invert FLIRT warped annotation back to subject space
+    print('inverse affine FLIRT')
+    os.system('convert_xfm -omat '+mouse_masked_invflirt_path+' -inverse '+mouse_masked_flirt_path)
     os.system('flirt -in ' + annotation_invwarped_path + ' \
                      -ref ' + input_original_image_path + ' \
                      -out ' + annotation_subject_path + ' \
-                     -init ' + FLIRT_inverted_path + ' \
+                     -init ' + mouse_masked_invflirt_path + ' \
                      -applyxfm \
                      -interp nearestneighbour \
                      -verbose 1')
@@ -148,13 +197,11 @@ for iSubject in range(len(subjects)):
     # load images
     annotation_subject_image = nib.load(annotation_subject_path)
     annotation_subject = annotation_subject_image.get_fdata()
-    mask_image = nib.load(mask_path)
-    mask = mask_image.get_fdata()
     input_original_image = nib.load(input_original_image_path)
     input_original = input_original_image.get_fdata()
 
     # make annotation 0 everywhere outside of mask
-    annotation_subject_adjusted = annotation_subject * mask[::-1, ::1, ::1]
+    annotation_subject_adjusted = annotation_subject * mask
 
     # save adjusted invsynned
     annotation_subject_adjusted_image = nib.Nifti1Image(annotation_subject_adjusted, np.eye(4))

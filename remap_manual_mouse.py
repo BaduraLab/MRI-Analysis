@@ -48,7 +48,9 @@ structure['id_mc'] = npi.remap(structure['id_custom'],
 structure.to_csv(reference_structure_mc_path)
 
 # Convert reference and data annotation files
-for Path in mouse_path_list + [annotation_path] + mouse_lobular_path_list:
+input_path_list = mouse_path_list + [annotation_path] + mouse_lobular_path_list
+input_path_list = glob.glob(os.path.join(data_path, '*', 'Isolations', 'ci', '*annotation*invsynned*cerebellum*lobular_ci.nii.gz'))
+for Path in input_path_list:
     print(Path)
 
     annotation_image = nib.load(Path)

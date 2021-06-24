@@ -50,10 +50,9 @@ nIterBootstrap = 10000
 
 # Follows
 nAnnotation = len(input_path_list_list)
-structure_table_list = [pd.read_csv(structure_path_list[0]),
-                        pd.read_csv(structure_path_list[1]),
-                        pd.read_csv(structure_path_list[2]),
-                        pd.read_csv(structure_path_list[3])]
+structure_table_list = list()
+for iAnnotation in range(nAnnotation):
+    structure_table_list.append(pd.read_csv(structure_path_list[iAnnotation]))
 pd.concat(structure_table_list, sort=False).to_csv(os.path.join(reference_path, 'structure_table.csv'))
 
 # for iAnnotation in range(3):
@@ -169,6 +168,15 @@ for subject in np.unique(output_table_all['subject']):
     output_table_all.loc[output_table_all['subject'] == subject, 'maskVolume'] = float(output_table_all.loc[np.logical_and(output_table_all['subject'] == subject, output_table_all['atlas'] == 'mask'), 'Volume'])
 
 output_table_all['VolumeMaskNormalized'] = output_table_all['Volume']/output_table_all['maskVolume']
+
+# For each structure compute WT maskNormalized mean and calculate percemaskNormalizd as a percentage of WT maskNormalized mean
+output_table_all['VolumeWTmean'] = np.nan
+output_table_all['VolumeWTmeanNormalized'] = np.nan
+for name in np.unique(output_table_all['name']):
+    WTmean = np.mean(output_table_all.loc[np.logical_and(output_table_all['subject'] != 'patient', output_table_all['name'] == name), 'VolumeMaskNormalized'])
+    output_table_all.loc[output_table_all['name'] == name, 'VolumeWTmean'] = WTmean
+    output_table_all.loc[output_table_all['name'] == name, 'VolumeWTmeanNormalized'] = (output_table_all['VolumeMaskNormalized'] / WTmean) * 100
+
 output_table_all.to_csv(os.path.join(analysis_path, 'all_volumes_human.csv'))
 output_table_cerebellum = output_table_all[output_table_all['atlas'] == 'Lobules-SUIT']
 output_table_cerebellum.to_csv(os.path.join(analysis_path, 'cerebellum_volumes_human_human.csv'))
@@ -181,9 +189,15 @@ output_table_sn.to_csv(os.path.join(analysis_path, 'sn_volumes_human.csv'))
 
 ## Go through each structure in volume table and summarize statistics per structure
 output_table_pername_list = list()
-for nameStruct in np.unique(np.array(output_table_all['name'].astype('category'))):
+uniq_NameAtlas = np.unique(np.vstack([np.array(output_table_all['name'].astype(str)),
+                                      np.array(output_table_all['atlas'].astype(str))]).astype(str), axis=1)
+nNameAtlas = uniq_NameAtlas.shape[1]
+for iNameAtlas in range(nNameAtlas):
+    nameStruct = uniq_NameAtlas[0, iNameAtlas]
+    atlasStruct = uniq_NameAtlas[1, iNameAtlas]
 
-    output_table_pername = output_table_all[output_table_all['name'] == nameStruct]
+    output_table_pername = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
+                                                           output_table_all['atlas'] == atlasStruct)]
     atlas_name = output_table_pername['atlas'].iloc[0]
 
     controlVolArray = np.array(output_table_pername[output_table_pername['subject'] != 'patient']['Volume'])
@@ -233,7 +247,7 @@ for nameStruct in np.unique(np.array(output_table_all['name'].astype('category')
     VolumeInteger_val = np.array(output_table_pername['VolumeInteger'])[0]
 
     output_table_pername_list.append(pd.DataFrame({'name': [nameStruct],
-                                                  'atlas': [atlas_name],
+                                                  'atlas': [atlasStruct],
                                                    'VolumeInteger': [VolumeInteger_val],
                                                   'cohenD': [cohenD],
                                                   'cohenDMaskNorm': [cohenDMaskNorm],
@@ -324,12 +338,24 @@ for iAnnotation in range(nAnnotation):
 #         'Right_X',
 #         'Left_VIIb',
 #         'Right_VIIIa']
-VOIs = list(output_table_pername['name'])
-for iVOI in range(len(VOIs)):
-    cohenD_current = float(output_table_pername.loc[output_table_pername['name'] == VOIs[iVOI], 'cohenD'])
-    cohenDMaskNorm_current = float(output_table_pername.loc[output_table_pername['name'] == VOIs[iVOI], 'cohenDMaskNorm'])
 
-    output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
+#### #### #### ########################################################################
+## Go through each structure in volume table and summarize statistics per structure
+uniq_NameAtlas_pername = np.unique(np.vstack([np.array(output_table_pername['name'].astype(str)),
+                                              np.array(output_table_pername['atlas'].astype(str))]).astype(str), axis=1)
+nNameAtlas_pername = uniq_NameAtlas_pername.shape[1]
+for iNameAtlas in range(nNameAtlas_pername):
+    nameStruct = uniq_NameAtlas_pername[0, iNameAtlas]
+    atlasStruct = uniq_NameAtlas_pername[1, iNameAtlas]
+
+    cohenD_current = float(output_table_pername.loc[np.logical_and(output_table_pername['name'] == nameStruct,
+                                                                   output_table_pername['atlas'] == atlasStruct), 'cohenD'])
+    cohenDMaskNorm_current = float(output_table_pername.loc[np.logical_and(output_table_pername['name'] == nameStruct,
+                                                                           output_table_pername['atlas'] == atlasStruct), 'cohenDMaskNorm'])
+
+    fig = plt.figure()
+    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
+                                                            output_table_all['atlas'] == atlasStruct)]
     ax = output_table_all_plot.plot.bar(x='subject',
                                         y='VolumeNormalized',
                                         rot=0,
@@ -340,15 +366,18 @@ for iVOI in range(len(VOIs)):
                                                [0.4, 0.4, 0.85],
                                                [0.85, 0.4, 0.4]])
     plt.ylabel('Volume Normalized to Reference')
-    plt.title(VOIs[iVOI]+', CohenD = ' + format('%.2f'%cohenD_current))
+    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
     ax.get_legend().remove()
     # plt.show()
     plt.savefig(os.path.join(analysis_path,
                              'barplots',
-                             'CohenD_'+ format('%.2f'%cohenD_current) +'_'+VOIs[iVOI]+'_volume_barplot.png'))
+                             'CohenD_'+ format('%.2f'%cohenD_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_barplot.png'))
+    plt.close('all')
 
 
-    output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
+    fig = plt.figure()
+    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
+                                                            output_table_all['atlas'] == atlasStruct)]
     ax = output_table_all_plot.plot.bar(x='subject',
                                         y='VolumeMaskNormalized',
                                         rot=0,
@@ -359,43 +388,49 @@ for iVOI in range(len(VOIs)):
                                                [0.4, 0.4, 0.85],
                                                [0.85, 0.4, 0.4]])
     plt.ylabel('Volume Percentage')
-    plt.title(VOIs[iVOI]+', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
+    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
     ax.get_legend().remove()
     # plt.show()
     plt.savefig(os.path.join(analysis_path,
                              'barplots',
-                             'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) +'_'+VOIs[iVOI]+'_volume_barplot_MaskNorm.png'))
-
+                             'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_barplot_MaskNorm.png'))
+    plt.close('all')
 
 
     #
 
-
-    output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
+    fig = plt.figure()
+    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
+                                                            output_table_all['atlas'] == atlasStruct)]
     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] == 'patient'), 'Genotype'] = 'patient'
     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] != 'patient'), 'Genotype'] = 'control'
     ax = output_table_all_plot[['VolumeNormalized', 'Genotype']].boxplot(by=['Genotype'])
     plt.ylabel('Volume Normalized to Reference')
-    plt.title(VOIs[iVOI]+', CohenD = ' + format('%.2f'%cohenD_current))
+    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
     plt.suptitle('')
     # ax.get_legend().remove()
     # plt.show()
     # ax.set_aspect(1.5)
     plt.savefig(os.path.join(analysis_path,
                              'boxplots',
-                             'CohenD_' + format('%.2f'%cohenD_current) + '_' + VOIs[iVOI] + '_volume_boxplot.png'))
+                             'CohenD_' + format('%.2f'%cohenD_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_boxplot.png'))
+    plt.close('all')
 
 
-    output_table_all_plot = output_table_all[output_table_all['name'] == VOIs[iVOI]]
+
+    fig = plt.figure()
+    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
+                                                            output_table_all['atlas'] == atlasStruct)]
     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] == 'patient'), 'Genotype'] = 'patient'
     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] != 'patient'), 'Genotype'] = 'control'
     ax = output_table_all_plot[['VolumeMaskNormalized', 'Genotype']].boxplot(by=['Genotype'])
     plt.ylabel('Volume Percentage')
-    plt.title(VOIs[iVOI]+', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
+    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
     plt.suptitle('')
     # ax.get_legend().remove()
     # plt.show()
     # ax.set_aspect(1.5)
     plt.savefig(os.path.join(analysis_path,
                              'boxplots',
-                             'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) +'_'+VOIs[iVOI]+'_volume_boxplot_MaskNorm.png'))
+                             'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_boxplot_MaskNorm.png'))
+    plt.close('all')

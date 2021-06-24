@@ -17,7 +17,7 @@ import datetime
 from compress_pickle import dump, load
 
 # Define
-data_path = os.path.join('Data', 'Mouse', 'Processed')
+data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
 mouse_path_list = glob.glob(os.path.join(data_path, '*'))
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
 # average_template_50_to_AMBMC_flirted.nii.gz
@@ -27,6 +27,7 @@ reference_template_path = os.path.join(reference_path, 'average_template_50_reor
 reference_annotation_path = os.path.join(reference_path, 'annotation_50_reoriented_flirted_cropped.nii.gz')
 
 # Loop through mice
+mouse_path_list = mouse_path_list[0:2]
 for iMousePath, MousePath in enumerate(mouse_path_list):
     print(iMousePath)
     print(iMousePath)
@@ -52,6 +53,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     reference_annotation_invsynned_invflirted_invflirtedRigid_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
     forw_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
     back_field_path = os.path.join(MousePath, mouse_string + '_annotation.nii.gz')
+
 
     # Load images
     print('loading images')

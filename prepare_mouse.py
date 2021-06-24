@@ -10,6 +10,7 @@ mouse_path_list = glob.glob(os.path.join(data_path, '*'))
 
 # Loop through mice
 for iMousePath, MousePath in enumerate(mouse_path_list):
+    print(f'MousePath = {MousePath}')
 
     # Define mouse paths
     mouse_string = MousePath.split(os.sep)[-1]
@@ -19,6 +20,7 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
     mouse_image = nib.load(mouse_path)
     nib.aff2axcodes(mouse_image.affine)
     mouse_reoriented_image = nib.as_closest_canonical(mouse_image)
+    print(f'Saving {mouse_reoriented_path}')
     nib.save(mouse_reoriented_image, mouse_reoriented_path)
 
     # mask_path = os.path.join(MousePath, mouse_string + '_mask_t=500_v=380_k=6.mask.nii.gz')

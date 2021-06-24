@@ -14,17 +14,20 @@ import numpy as np
 import numpy_indexed as npi
 import glob
 
-
+# Create lowdetail volume from unadjusted highdetail annotation
+# Should maybe be changed to use adjusted volume
+# Should get rid of absolute paths
 
 
 
 # Define paths
-allen_fsl_dir = '/usr/local/fsl/data/standard/allen_new'
-data_path = '/home/enzo/Desktop/Data/Mouse/Processed_New'
-invwarped_list = list(set(glob.glob(data_path+'/*/*invsynned*.nii.gz')) - set(glob.glob(data_path+'/*/*invsynned*flirted.nii.gz')) - set(glob.glob(data_path+'/*/*invsynned*lowdetail.nii.gz')))
+reference_path = os.path.join('Data', 'Mouse', 'Reference')
+data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
+reference_annotation_path = os.path.join(reference_path, 'annotation_25_reoriented.nii.gz')
+invwarped_list = glob.glob(os.path.join(data_path, '*', '*_lobular.nii.gz')) + [reference_annotation_path]
 # allen_annotation_path = os.path.join(allen_fsl_dir, 'annotation_25_to_AMBMC_flirted.nii.gz')
-allen_structure_table_path = os.path.join(allen_fsl_dir, 'structure_graph_remapped.csv')
-allen_structure_table_path_lowdetail = os.path.join(allen_fsl_dir, 'structure_graph_remapped_lowdetail.csv')
+allen_structure_table_path = os.path.join(reference_path, 'structure_graph_remapped.csv')
+allen_structure_table_path_lowdetail = os.path.join(reference_path, 'structure_graph_remapped_lowdetail2.csv')
 
 
 
@@ -40,17 +43,17 @@ for iInv in range(len(invwarped_list)):
         structure_graph_path = list(map(int, structure_graph.loc[iRow, 'structure_id_path_custom'].strip('][').split(', ')))
         structure_graph_path_len = len(structure_graph_path)
 
-        # structure is already low detail (level 3 or lower), remap integer to itself (no change in annotation)
-        if structure_graph_path_len < 3:
+        # structure is already low detail (level 4 or lower), remap integer to itself (no change in annotation)
+        if structure_graph_path_len < 4: # changed from level 3
             structure_id_low_detail.append(structure_graph_path[-1])
         # structure has parent with lower detail, remap integer to lower detail annotation volume
         else:
-            if structure_graph_path[2]==90:
+            if structure_graph_path[2] == 90: # exception for structure 90, but why?
                 structure_id_low_detail.append(structure_graph_path[-1])
             else:
-                structure_id_low_detail.append(structure_graph_path[2])
+                structure_id_low_detail.append(structure_graph_path[3]) # changed from level 3
 
-    structure_graph['id_low_detail'] = structure_id_low_detail
+    structure_graph['id_low_detail2'] = structure_id_low_detail
     structure_graph.to_csv(allen_structure_table_path_lowdetail)
 
 
@@ -58,12 +61,13 @@ for iInv in range(len(invwarped_list)):
     # Alter invwarped by remapping integers
     invwarped_shape = invwarped.shape
     invwarped = invwarped.reshape(-1)
-    invwarped = npi.remap(invwarped, list(structure_graph['id_custom']), list(structure_graph['id_low_detail']))
+    invwarped = npi.remap(invwarped, list(structure_graph['id_custom']), list(structure_graph['id_low_detail2']))
     invwarped = invwarped.reshape(invwarped_shape)
     img_invwarped = nib.Nifti1Image(invwarped, np.eye(4))
     img_invwarped.set_qform(invwarped_image.get_qform(), code=1)
     img_invwarped.set_sform(np.eye(4), code=0)
     invwarped_lowdetail_path = invwarped_list[iInv]
     invwarped_lowdetail_path = os.path.splitext(os.path.splitext(invwarped_lowdetail_path)[0])[0]
-    invwarped_lowdetail_path = invwarped_lowdetail_path + '_lowdetail.nii.gz'
+    invwarped_lowdetail_path = invwarped_lowdetail_path + '_lowdetail2.nii.gz'
+    print(f'Saving {invwarped_lowdetail_path}')
     nib.save(img_invwarped, invwarped_lowdetail_path)
