@@ -40,7 +40,7 @@ volIntList_toadjust = list(set(volIntList) - set(volIntList_toconserve))
 
 
 
-# Adjust MDS_1 orsuit with manual suit
+# Adjust orsuit with manual suit - lobular
 for iPath in input_path_list_list[0]:
     print(iPath)
 

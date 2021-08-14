@@ -5,11 +5,12 @@ import numpy as np
 import imageio
 
 # logical whether to run gif creation for sets of data
-run_logical = [False, False, True, False] # mouse, human and general analyses respectively
+run_logical = [False, False, False, True, False] # mouse, human and general analyses respectively
 gif_duration = 300
 analysis_path_list = [os.path.join('Data', 'Mouse', 'Analysis', 'imageSequenceFolders'),
                       os.path.join('Data', 'Human', 'Analysis', 'imageSequenceFolders'),
                       os.path.join('Data', 'Human', 'Analysis', 'imageSequenceFolders_isolations'),
+                      os.path.join('Data', 'Analysis', 'imageSequenceFolders', 'runFolders'),
                       os.path.join('Data', 'Analysis', 'imageSequenceFolders')]
 
 # Go through analysis folders and convert image sequence folders into gifs

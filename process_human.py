@@ -36,7 +36,10 @@ annotation_path_list = [os.path.join(reference_path,
                                      'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii.gz'),
                         os.path.join(reference_path,
                                      'AAN',
-                                     'AAN_reoriented.nii.gz')] ###################################### ADD
+                                     'AAN_reoriented.nii.gz'),
+                        os.path.join(reference_path,
+                                     'allen',
+                                     'annotation_full_custom_reoriented.nii.gz')] ###################################### ADD
 template_path_list = [os.path.join(reference_path,
                                    'standard',
                                    'MNI152_T1_1mm_brain_reoriented.nii.gz'),
@@ -51,12 +54,19 @@ template_path_list = [os.path.join(reference_path,
                                    'mni_icbm152_t1_tal_nlin_sym_09c_masked_reoriented.nii.gz'),
                       os.path.join(reference_path,
                                    'standard',
-                                   'MNI152_T1_1mm_brain_reoriented.nii.gz')]
+                                   'MNI152_T1_1mm_brain_reoriented.nii.gz'),
+                        os.path.join(reference_path,
+                                     'allen',
+                                     'mni_icbm152_t1_tal_nlin_asym_09b_hires_brain_reoriented.nii.gz')]
 annotation_name_list = ['suit',
                         'subcortical',
                         'CerebrA',
                         'mask',
-                        'AAN']
+                        'AAN',
+                        'allen']
+annotation_path_list = [annotation_path_list[-1]]
+template_path_list = [template_path_list[-1]]
+annotation_name_list = [annotation_name_list[-1]]
 # annotation_path_list = [os.path.join(reference_path,
 #                                      'subcortical',
 #                                      'prob_atlas_bilateral_reoriented.nii.gz')]
@@ -69,6 +79,8 @@ input_skull_path_list = glob.glob(os.path.join(data_path, '*', '*skull_reoriente
 input_path_list = list(set(input_path_list) - set(input_skull_path_list))
 # input_path_list = [input_path_list[4]]
 input_orsuit_path_list = glob.glob(os.path.join(data_path, '*', 'iw_Lobules-SUIT_u_a_*_reoriented_seg1.nii'))
+
+
 
 # Define
 probability_threshold = [0.2, 0.4, np.nan, np.nan, np.nan]  # Might be changed to list the same length as number of annotations
@@ -142,6 +154,8 @@ for iInputPath, InputPath in enumerate(input_path_list):
         else:
             print('without skull processing')
             input_skull_flirted = input_flirted
+
+
 
         # SyN
         # metric = SSDMetric(3)

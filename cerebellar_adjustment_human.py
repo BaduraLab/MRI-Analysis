@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy_indexed as npi
 from scipy import spatial
 from functions import imageAdjustNN
+# import ast
 
 # Define paths
 data_path = os.path.join('Data', 'Human', 'Processed')
@@ -20,11 +21,13 @@ analysis_path = os.path.join('Data', 'Human', 'Analysis')
 input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*annotation_suit_thrarg.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_subcortical_thrarg.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_CerebrA_thrarg.nii.gz')),
-                        glob.glob(os.path.join(data_path, '*', '*annotation_mask_thrarg.nii.gz'))]
+                        glob.glob(os.path.join(data_path, '*', '*annotation_mask_thrarg.nii.gz')),
+                        glob.glob(os.path.join(data_path, '*', '*annotation_allen_thrarg.nii.gz'))]
 structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT.txt'),
                        os.path.join(reference_path, 'subcortical', 'subcortical.csv'),
                        os.path.join(reference_path, 'CerebrA', 'CerebrA.csv'),
-                       os.path.join(reference_path, 'CerebrA', 'mask.csv')]
+                       os.path.join(reference_path, 'CerebrA', 'mask.csv'),
+                       os.path.join(reference_path, 'allen', 'voxel_count_custom.csv')]
 manual_path_list = glob.glob(os.path.join(data_path, '*', '*annotation_orsuit_thrarg_gray_manual.nii.gz'))
 CerebrA_path = os.path.join(reference_path, 'CerebrA')
 CerebrA_annotation_path = os.path.join(CerebrA_path, 'mni_icbm152_CerebrA_tal_nlin_sym_09c_reoriented.nii.gz')
@@ -43,7 +46,11 @@ structure_table_list = [pd.read_csv(structure_path_list[0],
                         pd.read_csv(structure_path_list[1],
                                     names=['VolumeInteger', 'acronym', 'name']),
                         pd.read_csv(structure_path_list[2]),
-                        pd.read_csv(structure_path_list[3])]
+                        pd.read_csv(structure_path_list[3]),
+                        pd.read_csv(structure_path_list[4], converters={'VolumeIntegerPath': eval})]
+allen_cerebellum_volumeInteger = int(structure_table_list[-1].loc[structure_table_list[-1]['name']=='cerebellum', 'VolumeInteger'])
+allen_cerebellum_volumeIntegers = list(structure_table_list[-1].loc[[allen_cerebellum_volumeInteger in structure_path for structure_path in structure_table_list[-1]['VolumeIntegerPath']], 'VolumeInteger'])
+# allen_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
 
 # Adjust automatic orsuit with manual suit
 for iPath in input_path_list_list[0]:
@@ -238,6 +245,104 @@ for iPath in input_path_list_list[2]:
     if subject_name == 'control2':
         adjusted = imageAdjustNN(input=adjusted, input_logical=orsuit_specific_logical,
                                  correction=adjusted, correction_logical=np.isin(adjusted, [39, 90]))
+
+    # Save adjusted image
+    adjusted = np.round(adjusted)
+    adjusted = adjusted.astype(int)
+    adjusted_image = nib.Nifti1Image(adjusted,
+                                     automatic_image.affine,
+                                     automatic_image.header)
+    nib.save(adjusted_image, adjusted_path)
+
+
+
+# Adjust automatic allen with manual suit
+for iPath in input_path_list_list[4]:
+    print(iPath)
+
+    # Get subject name
+    subject_name = iPath.split(os.sep)[-2]
+
+    # Get adjusted output path
+    automatic_path = iPath.split('allen')[0] + 'allen_thrarg.nii.gz'
+    manual_path = iPath.split('allen')[0] + 'orsuit_thrarg_gray_manual.nii.gz'
+    adjusted_path = iPath.split('allen')[0] + 'allen_thrarg_adjusted.nii.gz'
+    orsuit_path = iPath.split('allen')[0] + 'orsuit_thrarg.nii.gz'
+    print(automatic_path)
+    print(adjusted_path)
+
+    # Load image
+    automatic_image = nib.load(automatic_path)
+    automatic = automatic_image.get_fdata()
+    automatic = np.squeeze(automatic)
+    manual_image = nib.load(manual_path)
+    manual = manual_image.get_fdata()
+    adjusted = automatic.copy()
+    orsuit_image = nib.load(orsuit_path)
+    orsuit = orsuit_image.get_fdata()
+
+    # Grid for lowdetail and highdetail
+    X, Y, Z = np.mgrid[0:automatic_image.shape[0]:1, 0:automatic_image.shape[1]:1, 0:automatic_image.shape[2]:1]
+
+    # Logicals
+    automatic_logical = np.isin(automatic, allen_cerebellum_volumeIntegers)
+    manual_logical = manual > 0
+    add_logical = np.logical_and(np.logical_not(automatic_logical),
+                                 manual_logical)  # no automatic annotation, but there is manual annotation - add
+    remove_logical = np.logical_and(np.logical_not(manual_logical),
+                                    automatic_logical)  # no manual annotation, but there is automatic annotation - remove
+    # not_remove_logical = np.logical_not(remove_logical)
+
+    # Points
+    automatic_points = np.vstack((X[automatic_logical],
+                                  Y[automatic_logical],
+                                  Z[automatic_logical])).transpose()  # Get old automatic points
+    add_points = np.vstack((X[add_logical],
+                            Y[add_logical],
+                            Z[add_logical])).transpose()  # Get new manual points
+    remove_points = np.vstack((X[remove_logical],
+                               Y[remove_logical],
+                               Z[remove_logical])).transpose()  # Get remove points
+
+    # Tree
+    automatic_tree = spatial.KDTree(automatic_points)  # Get old automatic tree
+
+    # Go through new points
+    for iAdd in range(add_points.shape[0]):
+        add_index = tuple(add_points[iAdd, :])
+        closest_annotated_index = tuple(automatic_points[automatic_tree.query(add_index)[1]])
+        adjusted[add_index] = automatic[closest_annotated_index]
+
+    # not remove logical, points and tree
+    not_remove_logical = np.logical_not(np.isin(adjusted,
+                                                allen_cerebellum_volumeIntegers))
+    print('do not include cerebellar white matter in remove annotation interpolation')
+    not_remove_points = np.vstack((X[not_remove_logical],
+                                   Y[not_remove_logical],
+                                   Z[not_remove_logical])).transpose()  # Get not remove points
+    not_remove_tree = spatial.KDTree(not_remove_points)  # Get tree to fill in for removed values (should include 0s)
+    # not_remove_exception_logical = np.logical_and(not_remove_logical, np.logical_not(adjusted == 0))
+    # not_remove_exception_points = np.vstack((X[not_remove_exception_logical],
+    #                                          Y[not_remove_exception_logical],
+    #                                         Z[not_remove_exception_logical])).transpose()  # Get not remove expception points
+    # not_remove_exception_tree = spatial.KDTree(
+    #     not_remove_exception_points)  # Get tree to fill in for removed values (should include 0s)
+
+    # # Remove points
+    # adjusted[remove_logical] = 0  # If cerebellum white matter is annotated automatically as cerebellum gray matter
+    # # but manually annotated as not cerebellum gray matter, this annotation will be removed and show up as a hole.
+    # # You could make an exception for this case in an iRemove loop.
+
+    # Go through remove points
+    for iRemove in range(remove_points.shape[0]):
+        add_index = tuple(remove_points[iRemove, :])
+        closest_annotated_index = tuple(not_remove_points[not_remove_tree.query(add_index)[1]])
+        nearest_volumeInteger = adjusted[closest_annotated_index]
+        adjusted[add_index] = nearest_volumeInteger
+        # you could add an exception for cerebellar white matter where you search a second tree without zeros instead,
+        # if this returns cerebellar white matter assign that volumeInteger instead of 0
+        # (if zero, search nonzero tree, if cerebellar white matter assign respective integer, if not assign zero)
+        # update: exception causes cerebellar white matter annotation to be present clearly far away from cerebellum - turn off exception
 
     # Save adjusted image
     adjusted = np.round(adjusted)

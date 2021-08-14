@@ -25,12 +25,19 @@ import seaborn as sns
 
 
 ## Function to compute volumes for image
-def image2volumetable(image_path, voxel_volume):
+def image2volumetable(image_path):
+
+
     # Compute voxel numbers and volumes and output to table
     mouse_mask_image = nib.load(image_path)
     mouse_mask_image_array = mouse_mask_image.get_fdata()
     [mouse_volume_integer, mouse_voxel_number] = np.unique(np.int64(np.round(mouse_mask_image_array)),
                                                            return_counts=True)
+
+    # get voxel volume
+    # voxel_volume = np.linalg.det(mouse_mask_image.get_qform())
+    voxel_volume = np.prod(mouse_mask_image.header['pixdim'][1:4])  # should be in mm^3
+
     mouse_volume = mouse_voxel_number * voxel_volume
     mouse_table_reference = pd.DataFrame(
         {'Mouse': 'allen', 'VolumeInteger': mouse_volume_integer, 'VoxelNumber': mouse_voxel_number,
@@ -102,7 +109,7 @@ pername_merged_table = pd.read_csv(pername_merged_path)
 Path(os.path.join(analysis_path, 'perstructure')).mkdir(parents=True, exist_ok=True)
 
 # Reference volumes
-reference_table = image2volumetable(annotation_path, voxel_reference_volume)
+reference_table = image2volumetable(annotation_path)
 
 # Fill in reference additional reference volumes explicitly
 reference_table.loc[reference_table['name'] == 'cerebellum lobules I-III', 'Volume'] = \
@@ -186,7 +193,7 @@ for iMouse, Mouse in enumerate(mouse_path_list):
     subject = Mouse.split(os.path.sep)[-2]
     print(Mouse)
     print(subject)
-    mouse_table = image2volumetable(Mouse, voxel_volume)
+    mouse_table = image2volumetable(Mouse)
     mouse_table.to_csv(os.path.join(analysis_path, subject + '_volumes_mouse.csv'))
 
     mouse_table['Mouse'] = subject
@@ -495,6 +502,9 @@ for iIncludeInTest in [0, 1, 2, 3, 4, 5, 6, 7]: # 4 5 6 add, ce-mid, ce and mid
         mean_KO_RN = np.mean(mouse_table_nameStruct_KO['VolumeRootNormalized'])
         std_WT_RN = np.std(mouse_table_nameStruct_WT['VolumeRootNormalized'])
         std_KO_RN = np.std(mouse_table_nameStruct_KO['VolumeRootNormalized'])
+
+
+
         nWT = len(mouse_table_nameStruct_WT['Volume'])
         nKO = len(mouse_table_nameStruct_KO['Volume'])
         N = nWT + nKO
@@ -542,6 +552,8 @@ for iIncludeInTest in [0, 1, 2, 3, 4, 5, 6, 7]: # 4 5 6 add, ce-mid, ce and mid
         cohenD_RN_ac_CI = [np.quantile(cohenD_RN_BS, .025), np.quantile(cohenD_RN_BS, .975)]
         # cohenD_check = [np.quantile(cohenD_BS, .5), np.median(cohenD_BS)]
         # print(cohenD_check)
+
+
 
         mouse_table_pername_list.append(pd.DataFrame({'name': [nameStruct],
                                                       'cohenD': [cohenD_ac],
@@ -953,7 +965,7 @@ for iVOI in range(len(VOIs)):
 #     Mouse_name = Mouse.split('/')[7]
 #     FNIRT_run = Mouse.split('/')[-2]
 #
-#     mouse_table_invwarped_list[iMouse] = image2volumetable(Mouse, voxel_volume)
+#     mouse_table_invwarped_list[iMouse] = image2volumetable(Mouse)
 #     mouse_table_invwarped_list[iMouse]['Mouse'] = Mouse_name
 #     mouse_table_invwarped_list[iMouse]['FNIRT_run'] = FNIRT_run
 #
@@ -964,13 +976,13 @@ for iVOI in range(len(VOIs)):
 #
 #
 # ## Compute volumes for allen reference
-# allen_table = image2volumetable(allen_image, voxel_reference_volume)
+# allen_table = image2volumetable(allen_image)
 # allen_table['Mouse'] = 'allen'
 # allen_table.to_csv(os.path.join(analysis_path, 'allen_table.csv'))
 
 
 # ## Compute volumes for flirted allen reference
-# allen_flirted_table = image2volumetable(allen_image_flirted, voxel_AMBMC_volume)
+# allen_flirted_table = image2volumetable(allen_image_flirted)
 # allen_flirted_table['Mouse'] = 'allen_flirted'
 # allen_flirted_table.to_csv(os.path.join(analysis_path, 'allen_flirted_table.csv'))
 #

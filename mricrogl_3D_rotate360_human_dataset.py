@@ -51,7 +51,7 @@ nRot = 50
 data_path = 'C:/Users/enzon/Documents/Projects/MEP/mep-scripts/Data/Human/Processed'
 analysis_path = 'C:/Users/enzon/Documents/Projects/MEP/mep-scripts/Data/Human/Analysis/imageSequenceFolders'
 
-subjects = ['patient', 'control1'] #######################################################################
+subjects = ['patient', 'control4'] #######################################################################
 
 for subject in subjects:
 

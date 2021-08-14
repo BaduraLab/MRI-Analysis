@@ -61,7 +61,7 @@ for iSubjectPath, SubjectPath in enumerate(subject_path_list):
 
 
     # Affine FLIRT inmasked subject to reference
-    print('FLIRT affine start')
+    print('FLIRT rigid start')
     os.system('flirt -in ' + template_path + ' \
                      -ref ' + reference_template_path + ' \
                      -out ' + template_flirtedRigid_path + ' \

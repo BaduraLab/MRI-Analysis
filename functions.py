@@ -7,6 +7,9 @@ import os
 import glob
 import pandas as pd
 import fractions, math
+from numba import jit
+import time
+from scipy import stats
 
 
 def imageAdjustNN(input, input_logical, correction, correction_logical):
@@ -134,7 +137,7 @@ def imageFolder2gif(folder_path, output_gif_path=None, fps=10, max_gif_size=50):
 
 
 # Function to compute volumes for image
-def subjectPath2volumeTable(subject_path):
+def subjectPath2volumeTable(subject_path, print_bool=False):
     # Compute voxel numbers and volumes and output to table
 
     # Load image
@@ -142,15 +145,12 @@ def subjectPath2volumeTable(subject_path):
     subject = subject_image.get_fdata()
 
     # Get voxel volume
-    print(subject_image.header['pixdim'][1:4])
     voxel_volume = np.prod(subject_image.header['pixdim'][1:4])  # should be in mm^3
-    print('voxel volume = ' + str(voxel_volume) + 'mm^3')
 
     # Calculate volumes
     [iVoxel, nVoxel] = np.unique(np.int64(np.round(subject)),
                                  return_counts=True)
     vVoxel = nVoxel * voxel_volume
-    print('total volume = ' + str(np.sum(vVoxel[iVoxel != 0])) + 'mm^3')
 
     # # VTA check, remove later
     # VTA_volume = nVoxel[iVoxel == 1241]
@@ -161,6 +161,11 @@ def subjectPath2volumeTable(subject_path):
         {'VolumeInteger': iVoxel,
          'VoxelNumber': nVoxel,
          'Volume': vVoxel})
+
+    if print_bool:
+        print(subject_image.header['pixdim'][1:4])
+        print('voxel volume = ' + str(voxel_volume) + 'mm^3')
+        print('total volume = ' + str(np.sum(vVoxel[iVoxel != 0])) + 'mm^3')
 
     return volume_table
 
@@ -194,6 +199,7 @@ def imageFLIRT2defField(image, flirt):
 
 # Function to zeropad 3D array
 def zeroPadImage(input_3D_numpy, input_3D_numpy_template, padRatio):
+    # crop
     nonzero_logical = np.where(input_3D_numpy_template > 0)
     edgeMax = np.max(nonzero_logical, axis=1)
     edgeMin = np.min(nonzero_logical, axis=1)
@@ -245,13 +251,13 @@ def unzeroPadImage(output, crop_index, input_3D_numpy):
 
     # remove zeropadding
     print(f'Output shape = {output.shape}')
-    output = output[padLength:output.shape[0]-padLength+1,
-                    padLength:output.shape[1]-padLength+1,
-                    padLength:output.shape[2]-padLength+1]
+    output = output[padLength:output.shape[0]-padLength,
+                    padLength:output.shape[1]-padLength,
+                    padLength:output.shape[2]-padLength]
     print(f'Unzeropadded output shape = {output.shape}')
 
     # Assign output to input sized array
-    input_sized = np.zeros(input_3D_numpy.shape)
+    input_sized = np.zeros(input_3D_numpy.shape, dtype=input_3D_numpy.dtype)
     input_sized[edgeMin[0]:edgeMax[0]+1,
                 edgeMin[1]:edgeMax[1]+1,
                 edgeMin[2]:edgeMax[2]+1] = output
@@ -317,6 +323,7 @@ def load_image(input_path, is_annotation=False):
     if is_annotation:
         input = np.round(input).astype(int)
 
+@jit(nopython=False)
 def computeJacobianDet(back_field, reference_annotation_in_group):
     jacobian_xx = np.gradient(np.squeeze(back_field[:, :, :, 0]), axis=0)
     jacobian_xy = np.gradient(np.squeeze(back_field[:, :, :, 0]), axis=1)
@@ -339,3 +346,99 @@ def computeJacobianDet(back_field, reference_annotation_in_group):
                                   [jacobian_yx[iX, iY, iZ], jacobian_yy[iX, iY, iZ], jacobian_yz[iX, iY, iZ]],
                                   [jacobian_zx[iX, iY, iZ], jacobian_zy[iX, iY, iZ], jacobian_zz[iX, iY, iZ]]]))
     return jacobian_det
+
+def computeJacobianDet_nojit(back_field, reference_annotation_in_group):
+    jacobian_xx = np.gradient(np.squeeze(back_field[:, :, :, 0]), axis=0)
+    jacobian_xy = np.gradient(np.squeeze(back_field[:, :, :, 0]), axis=1)
+    jacobian_xz = np.gradient(np.squeeze(back_field[:, :, :, 0]), axis=2)
+    jacobian_yx = np.gradient(np.squeeze(back_field[:, :, :, 1]), axis=0)
+    jacobian_yy = np.gradient(np.squeeze(back_field[:, :, :, 1]), axis=1)
+    jacobian_yz = np.gradient(np.squeeze(back_field[:, :, :, 1]), axis=2)
+    jacobian_zx = np.gradient(np.squeeze(back_field[:, :, :, 2]), axis=0)
+    jacobian_zy = np.gradient(np.squeeze(back_field[:, :, :, 2]), axis=1)
+    jacobian_zz = np.gradient(np.squeeze(back_field[:, :, :, 2]), axis=2)
+    jacobian_det = np.zeros(back_field.shape[0:3])
+    for iX in range(back_field.shape[0]):
+        # iX_percentage = (iX / back_field.shape[0]) * 100
+        # print(f'iX_percentage = {iX_percentage}')
+        for iY in range(back_field.shape[1]):
+            for iZ in range(back_field.shape[2]):
+                if reference_annotation_in_group[iX, iY, iZ]:
+                    jacobian_det[iX, iY, iZ] = np.linalg.det(
+                        np.array([[jacobian_xx[iX, iY, iZ], jacobian_xy[iX, iY, iZ], jacobian_xz[iX, iY, iZ]],
+                                  [jacobian_yx[iX, iY, iZ], jacobian_yy[iX, iY, iZ], jacobian_yz[iX, iY, iZ]],
+                                  [jacobian_zx[iX, iY, iZ], jacobian_zy[iX, iY, iZ], jacobian_zz[iX, iY, iZ]]]))
+    return jacobian_det
+
+def computeCohenD_WT_KO(nWT, nKO, std_WT, std_KO, mean_WT, mean_KO, nIterBootstrap=0):
+    """
+    Calculate CohenD effect size with pooled variance and hedge correction.
+    """
+    N = nWT + nKO
+    hedge_correction = (N - 3) / (N - 2.25)
+    S_p = np.sqrt(((nWT - 1) * np.power(std_WT, 2) + (nKO - 1) * np.power(std_KO, 2)) / (N - 2))
+
+    cohenD = ((mean_WT - mean_KO) / S_p) * hedge_correction
+
+    if nIterBootstrap != 0:
+        cohenD_BS = np.empty(nIterBootstrap)
+        for iBS in range(nIterBootstrap):
+            WT_BS = np.random.normal(mean_WT, std_WT, nWT)
+            KO_BS = np.random.normal(mean_KO, std_KO, nKO)
+
+            mean_WT_BS = np.mean(WT_BS)
+            mean_KO_BS = np.mean(KO_BS)
+
+            std_WT_BS = np.std(mean_WT_BS)
+            std_KO_BS = np.std(mean_KO_BS)
+
+            S_p = np.sqrt(((nWT - 1) * np.power(std_WT_BS, 2) + (nKO - 1) * np.power(std_KO_BS, 2)) / (nKO + nWT - 2))
+            cohenD_BS[iBS] = ((mean_WT_BS - mean_KO_BS) / S_p) * hedge_correction # positve is greater WT mean, negative is smaller WT
+
+        cohenD_CI = [np.quantile(cohenD_BS, .025), np.quantile(cohenD_BS, .975)]
+
+        return cohenD, cohenD_CI
+
+    else:
+
+        return cohenD
+
+def voxCoords2fslCoords(voxCoords, image, dims):
+    # If the voxel to mm mapping has a positive determinant convert x dim according to fsl specifications
+    if np.linalg.det(image.get_qform()) > 0:
+        voxCoords[0] = image.shape[0] - 1 - voxCoords[0]
+
+    fslCoords = voxCoords
+    fslCoords[0:3] = voxCoords[0:3] * dims
+
+    return fslCoords
+
+def fslCoords2voxCoords(fslCoords, image, dims):
+
+    voxCoords = fslCoords
+    voxCoords[0:3] = fslCoords[0:3] / dims
+
+    # If the voxel to mm mapping has a positive determinant convert x dim according to fsl specifications
+    if np.linalg.det(image.get_qform()) > 0:
+        voxCoords[0] = image.shape[0] - 1 - voxCoords[0]
+
+    return voxCoords
+
+def timeFunc(Func, input_list, nIter):
+    elapsed_time = list()
+    for iIter in range(nIter):
+        t = time.process_time()
+
+        Func(*input_list)
+
+        elapsed_time.append(time.process_time() - t)
+
+    print(f'elapsed_time = {np.mean(elapsed_time)}')
+    return elapsed_time
+
+def CrawfordHowell(case, control):
+    tval = (case - np.mean(control)) / (np.std(control) * np.sqrt((len(control) + 1) / len(control)))
+    degfree = len(control) - 1
+    pval = 2 * stats.t.sf(np.abs(tval), df=degfree)  # two-tailed p-value
+    return tval, degfree, pval
+

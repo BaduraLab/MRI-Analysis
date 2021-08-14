@@ -7,6 +7,9 @@ from pathlib import Path
 import numpy as np
 import nibabel as nib
 from functions import reorient_image
+import random
+from functions import remap_3D
+from functions import save_image
 
 # Define paths
 reference_path = os.path.join('Data', 'Human', 'Reference')
@@ -42,6 +45,16 @@ CerebrA_annotation_path = os.path.join(CerebrA_path, 'mni_icbm152_CerebrA_tal_nl
 CerebrA_cerebellum_path = os.path.join(CerebrA_path,
                                        'mni_icbm152_CerebrA_tal_nlin_sym_09c_cerebellum_reoriented.nii.gz')
 CerebrA_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
+
+# allen path
+allen_reference_table_path = os.path.join(reference_path, 'allen', 'voxel_count.csv')
+allen_reference_table = pd.read_csv(allen_reference_table_path)
+allen_reference_table_custom_path = os.path.join(reference_path, 'allen', 'voxel_count_custom.csv')
+allen_reference_annotation_path = os.path.join(reference_path, 'allen', 'annotation_full.nii.gz')
+allen_reference_annotation_image = nib.load(allen_reference_annotation_path)
+allen_reference_annotation = allen_reference_annotation_image.get_fdata()
+allen_reference_annotation_custom_path = os.path.join(reference_path, 'allen', 'annotation_full_custom.nii.gz')
+allen_reference_template_path = os.path.join(reference_path, 'allen', 'mni_icbm152_t1_tal_nlin_asym_09b_hires_brain.nii.gz')
 
 
 
@@ -140,7 +153,26 @@ nib.save(subcortical_maxprob_image, subcortical_maxprob_path)
 # nib.save(subcortical_image_4D, subcortical_image_4D_path)
 
 
+def reorient(Path):
+    print(Path)
+    image = nib.load(Path)
 
+    print('canonical')
+    image = nib.as_closest_canonical(image)
+
+    print('q')
+    image.set_qform(image.affine, code=1)
+
+    print('s')
+    image.set_sform(image.affine, code=0)
+
+    print('save')
+    savePath = Path.split('.')[0] + '_reoriented.nii.gz'
+
+    print(f'Saving {savePath}')
+    nib.save(image, savePath)
+
+    return image
 
 
 
@@ -149,18 +181,8 @@ nib.save(subcortical_maxprob_image, subcortical_maxprob_path)
 # All  .nii or .nii.gz files in subcortical folder
 # set sform to unknown (code=0) and qform to affine
 for iPath, Path in enumerate(sum([suit_path_list, subcortical_path_list, CerebrA_path_list], [])):
-    print(Path)
     print(iPath)
-
-    image = nib.load(Path)
-    print('canonical')
-    image = nib.as_closest_canonical(image)
-    print('q')
-    image.set_qform(image.affine, code=1)
-    print('s')
-    image.set_sform(image.affine, code=0)
-    print('save')
-    nib.save(image, Path.split('.')[0] + '_reoriented.nii.gz')
+    reorient(Path)
 
 
 
@@ -198,5 +220,30 @@ AAN_table = pd.DataFrame(list(zip(AAN_acronym_list, AAN_nVoxel_list, AAN_volume_
 AAN_table.to_csv(os.path.join(reference_path, 'AAN', 'AAN_pretable_plus.csv'))
 
 reorient_image(AAN_output_path)
+
+
+
+# allen, assign custom id (VolumeInteger and VolumeIntegerPath)
+VolumeInteger = np.arange(1, allen_reference_table.shape[0] + 1)
+random.shuffle(VolumeInteger)
+allen_reference_table['VolumeInteger'] = VolumeInteger
+id_VolumeInteger_dict = dict(zip(list(allen_reference_table['id']), list(VolumeInteger)))
+allen_reference_table['VolumeIntegerPath'] = np.nan
+VolumeIntegerPath_list = []
+for iRow in range(allen_reference_table.shape[0]):
+    VolumeIntegerPath = [id_VolumeInteger_dict[int(id_str)] for id_str in
+     list(allen_reference_table['structure_id_path'][iRow].split('/')[1:-1])]
+    VolumeIntegerPath_list.append(VolumeIntegerPath)
+allen_reference_table['VolumeIntegerPath'] = VolumeIntegerPath_list
+allen_reference_annotation_remapped = remap_3D(allen_reference_annotation,
+                                               from_list=list(allen_reference_table['id']),
+                                               to_list=list(allen_reference_table['VolumeInteger']))
+save_image(allen_reference_annotation_remapped, allen_reference_annotation_image, allen_reference_annotation_custom_path)
+allen_reference_table.to_csv(allen_reference_table_custom_path)
+reorient(allen_reference_annotation_custom_path)
+reorient(allen_reference_template_path)
+
+
+
 
 

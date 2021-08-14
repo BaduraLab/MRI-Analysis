@@ -7,11 +7,14 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import glob
 import csv
+from scipy import stats
 from scipy.stats import ttest_ind
 from pathlib import Path
 import numpy_indexed as npi
 from functions import subjectPath2volumeTable
 from functions import strPathList2List
+from functions import CrawfordHowell
+from statsmodels.stats.multitest import multipletests
 
 
 
@@ -23,7 +26,8 @@ input_path_list_list = [glob.glob(os.path.join(data_path, '*', '*annotation_orsu
                         glob.glob(os.path.join(data_path, '*', '*annotation_subcortical_thrarg.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_CerebrA_thrarg_adjusted.nii.gz')),
                         glob.glob(os.path.join(data_path, '*', '*annotation_mask_thrarg.nii.gz')),
-                        glob.glob(os.path.join(data_path, '*', '*annotation_AAN_thrarg.nii.gz'))]
+                        glob.glob(os.path.join(data_path, '*', '*annotation_AAN_thrarg.nii.gz')),
+                        glob.glob(os.path.join(data_path, '*', '*annotation_allen_thrarg_adjusted.nii.gz'))]
 annotation_path_list = [os.path.join(reference_path,
                                      'suit',
                                      'atlasesSUIT',
@@ -39,13 +43,17 @@ annotation_path_list = [os.path.join(reference_path,
                                      'mni_icbm152_t1_tal_nlin_sym_09c_mask_reoriented.nii.gz'),
                         os.path.join(reference_path,
                                      'AAN',
-                                     'AAN_reoriented.nii.gz')] ###################################### ADD]
+                                     'AAN_reoriented.nii.gz'),
+                        os.path.join(reference_path,
+                                     'allen',
+                                     'annotation_full_custom_reoriented.nii.gz')] ###################################### ADD]
 structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobules-SUIT_plus.csv'),
                        os.path.join(reference_path, 'subcortical', 'subcortical_plus.csv'),
                        os.path.join(reference_path, 'CerebrA', 'CerebrA_plus.csv'),
                        os.path.join(reference_path, 'CerebrA', 'mask_plus.csv'),
-                       os.path.join(reference_path, 'AAN', 'AAN_plus.csv')]
-structure_name_list = ['Lobules-SUIT', 'subcortical', 'CerebrA', 'mask', 'AAN']
+                       os.path.join(reference_path, 'AAN', 'AAN_plus.csv'),
+                       os.path.join(reference_path, 'allen', 'voxel_count_custom.csv')]
+structure_name_list = ['Lobules-SUIT', 'subcortical', 'CerebrA', 'mask', 'AAN', 'allen']
 nIterBootstrap = 10000
 
 # Follows
@@ -68,9 +76,10 @@ for iAnnotation in range(nAnnotation):
     annotation_path = annotation_path_list[iAnnotation]
     structure_table = structure_table_list[iAnnotation]
     structure_name = structure_name_list[iAnnotation]
+    print(f'atlas name = {structure_name}')
     # structure_name = os.path.splitext(os.path.basename(structure_path_list[iAnnotation]))[0].split('_')[0]
 
-    print(annotation_path)
+    # print(annotation_path)
 
     # Compute volumes
     output_table = subjectPath2volumeTable(annotation_path)
@@ -115,6 +124,7 @@ for iAnnotation in range(nAnnotation):
     input_path_list = input_path_list_list[iAnnotation]
     structure_table = structure_table_list[iAnnotation]
     structure_name = structure_name_list[iAnnotation]
+    print(f'atlas name = {structure_name}')
     # structure_name = os.path.splitext(os.path.basename(structure_path_list[iAnnotation]))[0]
 
     for iInput, Input in enumerate(input_path_list):
@@ -190,30 +200,41 @@ output_table_sn.to_csv(os.path.join(analysis_path, 'sn_volumes_human.csv'))
 ## Go through each structure in volume table and summarize statistics per structure
 output_table_pername_list = list()
 uniq_NameAtlas = np.unique(np.vstack([np.array(output_table_all['name'].astype(str)),
-                                      np.array(output_table_all['atlas'].astype(str))]).astype(str), axis=1)
+                                      np.array(output_table_all['atlas'].astype(str)),
+                                      np.array(output_table_all['VolumeInteger'].astype(str))]).astype(str), axis=1)
 nNameAtlas = uniq_NameAtlas.shape[1]
 for iNameAtlas in range(nNameAtlas):
     nameStruct = uniq_NameAtlas[0, iNameAtlas]
     atlasStruct = uniq_NameAtlas[1, iNameAtlas]
+    volintStruct = int(uniq_NameAtlas[2, iNameAtlas])
 
-    output_table_pername = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
-                                                           output_table_all['atlas'] == atlasStruct)]
+    logicalStruct = np.logical_and(np.logical_and(output_table_all['name'] == nameStruct,
+                                  output_table_all['atlas'] == atlasStruct),
+                   output_table_all['VolumeInteger'] == volintStruct)
+
+    output_table_pername = output_table_all[logicalStruct]
     atlas_name = output_table_pername['atlas'].iloc[0]
 
     controlVolArray = np.array(output_table_pername[output_table_pername['subject'] != 'patient']['Volume'])
     controlMeanVolume = np.mean(controlVolArray)
     controlSDVolume = np.std(controlVolArray)
     patientVolume = float(output_table_pername[output_table_pername['subject'] == 'patient']['Volume'])
+    tStat_CH_vol, df_CH_vol, pVal_CH_vol = CrawfordHowell(case=patientVolume, control=controlVolArray)
+    tStat_OS_vol, pVal_OS_vol = stats.ttest_1samp(a=controlVolArray, popmean=patientVolume)
 
     controlVolArray = np.array(output_table_pername[output_table_pername['subject'] != 'patient']['VolumeNormalized'])
     controlMeanVolumeNorm = np.mean(controlVolArray)
     controlSDVolumeNorm = np.std(controlVolArray)
     patientVolumeNorm = float(output_table_pername[output_table_pername['subject'] == 'patient']['VolumeNormalized'])
+    tStat_CH_volNorm, df_CH_volNorm, pVal_CH_volNorm = CrawfordHowell(case=patientVolumeNorm, control=controlVolArray)
+    tStat_OS_volNorm, pVal_OS_volNorm = stats.ttest_1samp(a=controlVolArray, popmean=patientVolume)
 
     controlVolArray = np.array(output_table_pername[output_table_pername['subject'] != 'patient']['VolumeMaskNormalized'])
     controlMeanVolumeMaskNorm = np.mean(controlVolArray)
     controlSDVolumeMaskNorm = np.std(controlVolArray)
     patientVolumeMaskNorm = float(output_table_pername[output_table_pername['subject'] == 'patient']['VolumeMaskNormalized'])
+    tStat_CH_volNormMask, df_CH_volNormMask, pVal_CH_volNormMask = CrawfordHowell(case=patientVolumeMaskNorm, control=controlVolArray)
+    tStat_OS_volNormMask, pVal_OS_volNormMask = stats.ttest_1samp(a=controlVolArray, popmean=patientVolume)
 
     fractionDifferenceVolume = (patientVolume - controlMeanVolume) / controlMeanVolume
     nControl = len(controlVolArray)
@@ -243,73 +264,119 @@ for iNameAtlas in range(nNameAtlas):
     cohenDMaskNorm_CI = [np.quantile(cohenD_BS, .025), np.quantile(cohenD_BS, .975)]
 
 
+    # TODO: implement CrawfordHowell as well as single case
+    # CrawfordHowell < - function(case, control)
+    # {
+    #     tval < - (case - mean(control)) / (sd(control) * sqrt((length(control) + 1) / length(control)))
+    # degfree < - length(control) - 1
+    # pval < - 2 * (1 - pt(abs(tval), df=degfree))  # two-tailed p-value
+    # result < - data.frame(t=tval, df=degfree, p=pval)
+    # return (result)
+    # }
+    # tStat_CH, df_CH, pVal_CH = CrawfordHowell(case=patientVolume, control=controlVolArray)
+    # tStat_OS, pVal_OS = stats.ttest_1samp(a=controlVolArray, popmean=patientVolume)
+
+
+
+
 
     VolumeInteger_val = np.array(output_table_pername['VolumeInteger'])[0]
 
     output_table_pername_list.append(pd.DataFrame({'name': [nameStruct],
-                                                  'atlas': [atlasStruct],
+                                                   'atlas': [atlasStruct],
                                                    'VolumeInteger': [VolumeInteger_val],
-                                                  'cohenD': [cohenD],
-                                                  'cohenDMaskNorm': [cohenDMaskNorm],
-                                                  'cohenD_CI': [cohenD_CI],
-                                                  'cohenDMaskNorm_CI': [cohenDMaskNorm_CI],
-                                                  'fractionDifference': [fractionDifferenceVolume],
-                                                  'controlMeanVolume': [controlMeanVolume],
-                                                  'controlSDVolume': [controlSDVolume],
-                                                  'patientVolume': [patientVolume],
-                                                  'controlMeanVolumeNorm': [controlMeanVolumeNorm],
-                                                  'controlSDVolumeNorm': [controlSDVolumeNorm],
-                                                  'patientVolumeNorm': [patientVolumeNorm],
-                                                  'controlMeanVolumeMaskNorm': [controlMeanVolumeMaskNorm],
-                                                  'controlSDVolumeMaskNorm': [controlSDVolumeMaskNorm],
-                                                  'patientVolumeMaskNorm': [patientVolumeMaskNorm]}))
+                                                   'pVal': [pVal_CH_vol],
+                                                   'cohenD': [cohenD],
+                                                   'cohenDMaskNorm': [cohenDMaskNorm],
+                                                   'pValMaskNorm': [pVal_CH_volNormMask],
+                                                   'cohenD_CI': [cohenD_CI],
+                                                   'cohenDMaskNorm_CI': [cohenDMaskNorm_CI],
+                                                   'fractionDifference': [fractionDifferenceVolume],
+                                                   'controlMeanVolume': [controlMeanVolume],
+                                                   'controlSDVolume': [controlSDVolume],
+                                                   'patientVolume': [patientVolume],
+                                                   'controlMeanVolumeNorm': [controlMeanVolumeNorm],
+                                                   'controlSDVolumeNorm': [controlSDVolumeNorm],
+                                                   'patientVolumeNorm': [patientVolumeNorm],
+                                                   'controlMeanVolumeMaskNorm': [controlMeanVolumeMaskNorm],
+                                                   'controlSDVolumeMaskNorm': [controlSDVolumeMaskNorm],
+                                                   'patientVolumeMaskNorm': [patientVolumeMaskNorm],
+                                                   'tStat_CH_vol': [tStat_CH_vol],
+                                                   'pVal_CH_vol': [pVal_CH_vol],
+                                                   'tStat_OS_vol': [tStat_OS_vol],
+                                                   'pVal_OS_vol': [pVal_OS_vol],
+                                                   'tStat_CH_volNorm': [tStat_CH_volNorm],
+                                                   'pVal_CH_volNorm': [pVal_CH_volNorm],
+                                                   'tStat_OS_volNorm': [tStat_OS_volNorm],
+                                                   'pVal_OS_volNorm': [pVal_OS_volNorm],
+                                                   'tStat_CH_volNormMask': [tStat_CH_volNormMask],
+                                                   'pVal_CH_volNormMask': [pVal_CH_volNormMask],
+                                                   'tStat_OS_volNormMask': [tStat_OS_volNormMask],
+                                                   'pVal_OS_volNormMask': [pVal_OS_volNormMask]}))
+
 
 output_table_pername = pd.concat(output_table_pername_list, ignore_index=True)
 output_table_pername = output_table_pername.sort_values(by='cohenDMaskNorm', ascending=False)
 output_table_pername['relFracDiff'] = output_table_pername['fractionDifference']/float(output_table_pername[output_table_pername['name']=='mask']['fractionDifference'])
-output_table_pername.to_csv(os.path.join(analysis_path, 'pername'+'_volumes_human.csv'))
+output_table_pername['pValFDR'] = multipletests(output_table_pername['pVal'], method='fdr_bh')[1]
+output_table_pername['pValMaskNormFDR'] = multipletests(output_table_pername['pValMaskNorm'], method='fdr_bh')[1]
+# output_table_pername = output_table_pername[['name', 'atlas', 'VolumeInteger', 'pVal', 'pValFDR', 'cohenD',
+#                                              'cohenDMaskNorm', 'pValMaskNorm', 'cohenD_CI', 'cohenDMaskNorm_CI', 'fractionDifference', 'controlMeanVolume']]
+output_table_pername.insert(4, 'pValFDR', output_table_pername['pValFDR'])
+output_table_pername.insert(8, 'pValMaskNormFDR', output_table_pername['pValMaskNormFDR'])
+output_table_pername.to_csv(os.path.join(analysis_path, 'pername_volumes_human.csv'))
+
 output_table_pername_cerebellum = output_table_pername[output_table_pername['atlas'] == 'Lobules-SUIT']
+output_table_pername_cerebellum['pValFDR'] = multipletests(output_table_pername_cerebellum['pVal'], method='fdr_bh')[1]
+output_table_pername['pValMaskNormFDR'] = multipletests(output_table_pername['pValMaskNorm'], method='fdr_bh')[1]
 output_table_pername_cerebellum.to_csv(os.path.join(analysis_path, 'pername_cerebellum_volumes_human.csv'))
 
 
 
-# Create 3 images based on pername for each atlas: 1) Map by abs relFracDiff 2) Same but increased (relFracDiff>0) 3) Same but decreased (relFracDiff<0)
+# Create 3 images based on pername for each atlas: 1) Map by abs CohenD 2) Same but increased (CohenD<0) 3) Same but decreased (CohenD>0) 
+# Create 3 additional images but for CohenDMaskNorm
 for iAnnotation in range(nAnnotation):
-    print(iAnnotation)
     annotation_path = annotation_path_list[iAnnotation]
     annotation_image = nib.load(annotation_path)
     annotation = annotation_image.get_fdata()
     structure_table = structure_table_list[iAnnotation]
     structure_name = structure_name_list[iAnnotation]
+    print(f'atlas name = {structure_name}')
     output_table_pername_peratlas = output_table_pername[output_table_pername['atlas'] == structure_name]
 
     map_from = np.array(output_table_pername_peratlas['VolumeInteger'])
-
-    for i in range(3):
-        print(i)
-
-        annotation_aFD_path = os.path.join(analysis_path, annotation_path.split(os.sep)[-1].split('.')[0])
-        if i == 0:
-            map_to = np.abs(np.array(output_table_pername_peratlas['fractionDifference']))
-            annotation_aFD_path = annotation_aFD_path + '_aFD' + '.nii.gz'
-        elif i == 1:
-            map_to = np.abs(np.array(output_table_pername_peratlas['fractionDifference']))*(np.array(output_table_pername_peratlas['fractionDifference']) > 0)
-            annotation_aFD_path = annotation_aFD_path + '_aFD_volIncrease' + '.nii.gz'
-        elif i == 2:
-            map_to = np.abs(np.array(output_table_pername_peratlas['fractionDifference']))*(np.array(output_table_pername_peratlas['fractionDifference']) < 0)
-            annotation_aFD_path = annotation_aFD_path + '_aFD_volDecrease' + '.nii.gz'
-
-        annotation_remapped = np.round(annotation) # always annotation so should never be non-integer
-        # input = input.astype(int) # always annotation so should never be non-integer
-        annotation_remapped_shape = annotation_remapped.shape
-        annotation_remapped = annotation_remapped.reshape(-1)
-        annotation_remapped = npi.remap(annotation_remapped, map_from, map_to)
-        annotation_remapped = annotation_remapped.reshape(annotation_remapped_shape)
-        # annotation_remapped = remap_3D(annotation, map_from_filtered.astype(int), map_to_filtered)
-
-        output_image = nib.Nifti1Image(annotation_remapped,
-                                       annotation_image.affine)
-        nib.save(output_image, annotation_aFD_path)
+    
+    for j in range(2):
+        if j==0:
+            mapArr = np.array(output_table_pername_peratlas['cohenD'])
+        else:
+            mapArr = np.array(output_table_pername_peratlas['cohenDMaskNorm'])
+            
+        for i in range(3):
+            print(i)
+    
+            annotation_CD_path = os.path.join(analysis_path, annotation_path.split(os.sep)[-1].split('.')[0])
+            if i == 0:
+                map_to = np.abs(mapArr)
+                annotation_CD_path = annotation_CD_path + '_CD' + '.nii.gz'
+            elif i == 1:
+                map_to = np.abs(mapArr)*(mapArr < 0)
+                annotation_CD_path = annotation_CD_path + '_CD_volIncrease' + '.nii.gz'
+            elif i == 2:
+                map_to = np.abs(mapArr)*(mapArr > 0)
+                annotation_CD_path = annotation_CD_path + '_CD_volDecrease' + '.nii.gz'
+    
+            annotation_remapped = np.round(annotation) # always annotation so should never be non-integer
+            # input = input.astype(int) # always annotation so should never be non-integer
+            annotation_remapped_shape = annotation_remapped.shape
+            annotation_remapped = annotation_remapped.reshape(-1)
+            annotation_remapped = npi.remap(annotation_remapped, map_from, map_to)
+            annotation_remapped = annotation_remapped.reshape(annotation_remapped_shape)
+            # annotation_remapped = remap_3D(annotation, map_from_filtered.astype(int), map_to_filtered)
+    
+            output_image = nib.Nifti1Image(annotation_remapped,
+                                           annotation_image.affine)
+            nib.save(output_image, annotation_CD_path)
 
 
 
@@ -339,98 +406,102 @@ for iAnnotation in range(nAnnotation):
 #         'Left_VIIb',
 #         'Right_VIIIa']
 
-#### #### #### ########################################################################
-## Go through each structure in volume table and summarize statistics per structure
-uniq_NameAtlas_pername = np.unique(np.vstack([np.array(output_table_pername['name'].astype(str)),
-                                              np.array(output_table_pername['atlas'].astype(str))]).astype(str), axis=1)
-nNameAtlas_pername = uniq_NameAtlas_pername.shape[1]
-for iNameAtlas in range(nNameAtlas_pername):
-    nameStruct = uniq_NameAtlas_pername[0, iNameAtlas]
-    atlasStruct = uniq_NameAtlas_pername[1, iNameAtlas]
-
-    cohenD_current = float(output_table_pername.loc[np.logical_and(output_table_pername['name'] == nameStruct,
-                                                                   output_table_pername['atlas'] == atlasStruct), 'cohenD'])
-    cohenDMaskNorm_current = float(output_table_pername.loc[np.logical_and(output_table_pername['name'] == nameStruct,
-                                                                           output_table_pername['atlas'] == atlasStruct), 'cohenDMaskNorm'])
-
-    fig = plt.figure()
-    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
-                                                            output_table_all['atlas'] == atlasStruct)]
-    ax = output_table_all_plot.plot.bar(x='subject',
-                                        y='VolumeNormalized',
-                                        rot=0,
-                                        color=[[0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.85, 0.4, 0.4]])
-    plt.ylabel('Volume Normalized to Reference')
-    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
-    ax.get_legend().remove()
-    # plt.show()
-    plt.savefig(os.path.join(analysis_path,
-                             'barplots',
-                             'CohenD_'+ format('%.2f'%cohenD_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_barplot.png'))
-    plt.close('all')
-
-
-    fig = plt.figure()
-    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
-                                                            output_table_all['atlas'] == atlasStruct)]
-    ax = output_table_all_plot.plot.bar(x='subject',
-                                        y='VolumeMaskNormalized',
-                                        rot=0,
-                                        color=[[0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.4, 0.4, 0.85],
-                                               [0.85, 0.4, 0.4]])
-    plt.ylabel('Volume Percentage')
-    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
-    ax.get_legend().remove()
-    # plt.show()
-    plt.savefig(os.path.join(analysis_path,
-                             'barplots',
-                             'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_barplot_MaskNorm.png'))
-    plt.close('all')
-
-
-    #
-
-    fig = plt.figure()
-    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
-                                                            output_table_all['atlas'] == atlasStruct)]
-    output_table_all_plot.loc[np.array(output_table_all_plot['subject'] == 'patient'), 'Genotype'] = 'patient'
-    output_table_all_plot.loc[np.array(output_table_all_plot['subject'] != 'patient'), 'Genotype'] = 'control'
-    ax = output_table_all_plot[['VolumeNormalized', 'Genotype']].boxplot(by=['Genotype'])
-    plt.ylabel('Volume Normalized to Reference')
-    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
-    plt.suptitle('')
-    # ax.get_legend().remove()
-    # plt.show()
-    # ax.set_aspect(1.5)
-    plt.savefig(os.path.join(analysis_path,
-                             'boxplots',
-                             'CohenD_' + format('%.2f'%cohenD_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_boxplot.png'))
-    plt.close('all')
-
-
-
-    fig = plt.figure()
-    output_table_all_plot = output_table_all[np.logical_and(output_table_all['name'] == nameStruct,
-                                                            output_table_all['atlas'] == atlasStruct)]
-    output_table_all_plot.loc[np.array(output_table_all_plot['subject'] == 'patient'), 'Genotype'] = 'patient'
-    output_table_all_plot.loc[np.array(output_table_all_plot['subject'] != 'patient'), 'Genotype'] = 'control'
-    ax = output_table_all_plot[['VolumeMaskNormalized', 'Genotype']].boxplot(by=['Genotype'])
-    plt.ylabel('Volume Percentage')
-    plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
-    plt.suptitle('')
-    # ax.get_legend().remove()
-    # plt.show()
-    # ax.set_aspect(1.5)
-    plt.savefig(os.path.join(analysis_path,
-                             'boxplots',
-                             'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_boxplot_MaskNorm.png'))
-    plt.close('all')
+# #### #### #### ########################################################################
+# ## Go through each structure in volume table and summarize statistics per structure
+# uniq_NameAtlas_pername = np.unique(np.vstack([np.array(output_table_pername['name'].astype(str)),
+#                                               np.array(output_table_pername['atlas'].astype(str)),
+#                                               np.array(output_table_pername['VolumeInteger'].astype(str))]).astype(str), axis=1)
+# nNameAtlas_pername = uniq_NameAtlas_pername.shape[1]
+# for iNameAtlas in range(nNameAtlas_pername):
+#     nameStruct = uniq_NameAtlas_pername[0, iNameAtlas]
+#     atlasStruct = uniq_NameAtlas_pername[1, iNameAtlas]
+#     volintStruct = int(uniq_NameAtlas[2, iNameAtlas])
+# 
+#     logicalStruct = np.logical_and(np.logical_and(output_table_all['name'] == nameStruct,
+#                                   output_table_all['atlas'] == atlasStruct),
+#                    output_table_all['VolumeInteger'] == volintStruct)
+# 
+#     logicalStruct_pername = np.logical_and(np.logical_and(output_table_pername['name'] == nameStruct,
+#                                   output_table_pername['atlas'] == atlasStruct),
+#                    output_table_pername['VolumeInteger'] == volintStruct)
+# 
+#     cohenD_current = float(output_table_pername.loc[logicalStruct_pername, 'cohenD'])
+#     cohenDMaskNorm_current = float(output_table_pername.loc[logicalStruct_pername, 'cohenDMaskNorm'])
+# 
+#     fig = plt.figure()
+#     output_table_all_plot = output_table_all[logicalStruct]
+#     ax = output_table_all_plot.plot.bar(x='subject',
+#                                         y='VolumeNormalized',
+#                                         rot=0,
+#                                         color=[[0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.85, 0.4, 0.4]])
+#     plt.ylabel('Volume Normalized to Reference')
+#     plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
+#     ax.get_legend().remove()
+#     # plt.show()
+#     plt.savefig(os.path.join(analysis_path,
+#                              'barplots',
+#                              'CohenD_'+ format('%.2f'%cohenD_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_barplot.png'))
+#     plt.close('all')
+# 
+# 
+#     fig = plt.figure()
+#     output_table_all_plot = output_table_all[logicalStruct]
+#     ax = output_table_all_plot.plot.bar(x='subject',
+#                                         y='VolumeMaskNormalized',
+#                                         rot=0,
+#                                         color=[[0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.4, 0.4, 0.85],
+#                                                [0.85, 0.4, 0.4]])
+#     plt.ylabel('Volume Percentage')
+#     plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
+#     ax.get_legend().remove()
+#     # plt.show()
+#     plt.savefig(os.path.join(analysis_path,
+#                              'barplots',
+#                              'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_barplot_MaskNorm.png'))
+#     plt.close('all')
+# 
+# 
+#     #
+# 
+#     fig = plt.figure()
+#     output_table_all_plot = output_table_all[logicalStruct]
+#     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] == 'patient'), 'Genotype'] = 'patient'
+#     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] != 'patient'), 'Genotype'] = 'control'
+#     ax = output_table_all_plot[['VolumeNormalized', 'Genotype']].boxplot(by=['Genotype'])
+#     plt.ylabel('Volume Normalized to Reference')
+#     plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenD_current))
+#     plt.suptitle('')
+#     # ax.get_legend().remove()
+#     # plt.show()
+#     # ax.set_aspect(1.5)
+#     plt.savefig(os.path.join(analysis_path,
+#                              'boxplots',
+#                              'CohenD_' + format('%.2f'%cohenD_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_boxplot.png'))
+#     plt.close('all')
+# 
+# 
+# 
+#     fig = plt.figure()
+#     output_table_all_plot = output_table_all[logicalStruct]
+#     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] == 'patient'), 'Genotype'] = 'patient'
+#     output_table_all_plot.loc[np.array(output_table_all_plot['subject'] != 'patient'), 'Genotype'] = 'control'
+#     ax = output_table_all_plot[['VolumeMaskNormalized', 'Genotype']].boxplot(by=['Genotype'])
+#     plt.ylabel('Volume Percentage')
+#     plt.title(nameStruct + '_' + atlasStruct + ', CohenD = ' + format('%.2f'%cohenDMaskNorm_current))
+#     plt.suptitle('')
+#     # ax.get_legend().remove()
+#     # plt.show()
+#     # ax.set_aspect(1.5)
+#     plt.savefig(os.path.join(analysis_path,
+#                              'boxplots',
+#                              'CohenD_'+ format('%.2f'%cohenDMaskNorm_current) + '_' + nameStruct + '_' + atlasStruct + '_volume_boxplot_MaskNorm.png'))
+#     plt.close('all')

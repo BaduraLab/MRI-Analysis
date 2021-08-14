@@ -21,3 +21,9 @@ __pycache__/
 .idea/rSettings.xml
 
 cohenD_CI.R
+
+*.png
+
+*.tif
+
+*.csv
