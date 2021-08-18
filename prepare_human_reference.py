@@ -50,6 +50,7 @@ CerebrA_cerebellum_volumeIntegers = np.array([46, 97, 2, 53, 20, 71, 50, 101])
 allen_reference_table_path = os.path.join(reference_path, 'allen', 'voxel_count.csv')
 allen_reference_table = pd.read_csv(allen_reference_table_path)
 allen_reference_table_custom_path = os.path.join(reference_path, 'allen', 'voxel_count_custom.csv')
+allen_reference_table_custom_plus_path = os.path.join(reference_path, 'allen', 'allen_plus.csv')
 allen_reference_annotation_path = os.path.join(reference_path, 'allen', 'annotation_full.nii.gz')
 allen_reference_annotation_image = nib.load(allen_reference_annotation_path)
 allen_reference_annotation = allen_reference_annotation_image.get_fdata()
@@ -239,10 +240,13 @@ allen_reference_annotation_remapped = remap_3D(allen_reference_annotation,
                                                from_list=list(allen_reference_table['id']),
                                                to_list=list(allen_reference_table['VolumeInteger']))
 save_image(allen_reference_annotation_remapped, allen_reference_annotation_image, allen_reference_annotation_custom_path)
-allen_reference_table.to_csv(allen_reference_table_custom_path)
+if not os.path.exists(allen_reference_table_custom_path):
+    allen_reference_table.to_csv(allen_reference_table_custom_path)
+allen_reference_table = allen_reference_table[allen_reference_table['subgraph_annotated']]
+if not os.path.exists(allen_reference_table_custom_plus_path):
+    allen_reference_table.to_csv(allen_reference_table_custom_plus_path)
 reorient(allen_reference_annotation_custom_path)
 reorient(allen_reference_template_path)
-
 
 
 
