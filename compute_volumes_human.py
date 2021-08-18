@@ -16,6 +16,14 @@ from functions import strPathList2List
 from functions import CrawfordHowell
 from statsmodels.stats.multitest import multipletests
 
+# Ignore runtime warnings
+import warnings
+def fxn():
+    warnings.warn("runtime", RuntimeWarning)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    fxn()
+
 
 
 # Define paths
@@ -52,7 +60,7 @@ structure_path_list = [os.path.join(reference_path, 'suit', 'atlasesSUIT', 'Lobu
                        os.path.join(reference_path, 'CerebrA', 'CerebrA_plus.csv'),
                        os.path.join(reference_path, 'CerebrA', 'mask_plus.csv'),
                        os.path.join(reference_path, 'AAN', 'AAN_plus.csv'),
-                       os.path.join(reference_path, 'allen', 'voxel_count_custom.csv')]
+                       os.path.join(reference_path, 'allen', 'allen_plus.csv')]
 structure_name_list = ['Lobules-SUIT', 'subcortical', 'CerebrA', 'mask', 'AAN', 'allen']
 nIterBootstrap = 10000
 
@@ -227,14 +235,14 @@ for iNameAtlas in range(nNameAtlas):
     controlSDVolumeNorm = np.std(controlVolArray)
     patientVolumeNorm = float(output_table_pername[output_table_pername['subject'] == 'patient']['VolumeNormalized'])
     tStat_CH_volNorm, df_CH_volNorm, pVal_CH_volNorm = CrawfordHowell(case=patientVolumeNorm, control=controlVolArray)
-    tStat_OS_volNorm, pVal_OS_volNorm = stats.ttest_1samp(a=controlVolArray, popmean=patientVolume)
+    tStat_OS_volNorm, pVal_OS_volNorm = stats.ttest_1samp(a=controlVolArray, popmean=patientVolumeNorm)
 
     controlVolArray = np.array(output_table_pername[output_table_pername['subject'] != 'patient']['VolumeMaskNormalized'])
     controlMeanVolumeMaskNorm = np.mean(controlVolArray)
     controlSDVolumeMaskNorm = np.std(controlVolArray)
     patientVolumeMaskNorm = float(output_table_pername[output_table_pername['subject'] == 'patient']['VolumeMaskNormalized'])
     tStat_CH_volNormMask, df_CH_volNormMask, pVal_CH_volNormMask = CrawfordHowell(case=patientVolumeMaskNorm, control=controlVolArray)
-    tStat_OS_volNormMask, pVal_OS_volNormMask = stats.ttest_1samp(a=controlVolArray, popmean=patientVolume)
+    tStat_OS_volNormMask, pVal_OS_volNormMask = stats.ttest_1samp(a=controlVolArray, popmean=patientVolumeMaskNorm)
 
     fractionDifferenceVolume = (patientVolume - controlMeanVolume) / controlMeanVolume
     nControl = len(controlVolArray)
@@ -318,18 +326,33 @@ for iNameAtlas in range(nNameAtlas):
 output_table_pername = pd.concat(output_table_pername_list, ignore_index=True)
 output_table_pername = output_table_pername.sort_values(by='cohenDMaskNorm', ascending=False)
 output_table_pername['relFracDiff'] = output_table_pername['fractionDifference']/float(output_table_pername[output_table_pername['name']=='mask']['fractionDifference'])
-output_table_pername['pValFDR'] = multipletests(output_table_pername['pVal'], method='fdr_bh')[1]
-output_table_pername['pValMaskNormFDR'] = multipletests(output_table_pername['pValMaskNorm'], method='fdr_bh')[1]
+output_table_pername.loc[np.logical_not(np.isnan(output_table_pername['pVal'])), 'pValFDR'] = \
+    multipletests(output_table_pername.loc[np.logical_not(np.isnan(output_table_pername['pVal'])), 'pVal'], method='fdr_bh')[1]
+output_table_pername.loc[np.logical_not(np.isnan(output_table_pername['pValMaskNorm'])), 'pValMaskNormFDR'] = \
+    multipletests(output_table_pername.loc[np.logical_not(np.isnan(output_table_pername['pValMaskNorm'])), 'pValMaskNorm'], method='fdr_bh')[1]
 # output_table_pername = output_table_pername[['name', 'atlas', 'VolumeInteger', 'pVal', 'pValFDR', 'cohenD',
 #                                              'cohenDMaskNorm', 'pValMaskNorm', 'cohenD_CI', 'cohenDMaskNorm_CI', 'fractionDifference', 'controlMeanVolume']]
-output_table_pername.insert(4, 'pValFDR', output_table_pername['pValFDR'])
-output_table_pername.insert(8, 'pValMaskNormFDR', output_table_pername['pValMaskNormFDR'])
+output_table_pername.insert(4, 'pValFDR_temp', output_table_pername['pValFDR'])
+output_table_pername.drop('pValFDR', axis=1, inplace=True)
+output_table_pername.rename(columns={'pValFDR_temp': 'pValFDR'}, inplace=True)
+output_table_pername.insert(8, 'pValMaskNormFDR_temp', output_table_pername['pValMaskNormFDR'])
+output_table_pername.drop('pValMaskNormFDR', axis=1, inplace=True)
+output_table_pername.rename(columns={'pValMaskNormFDR_temp': 'pValMaskNormFDR'}, inplace=True)
 output_table_pername.to_csv(os.path.join(analysis_path, 'pername_volumes_human.csv'))
 
 output_table_pername_cerebellum = output_table_pername[output_table_pername['atlas'] == 'Lobules-SUIT']
-output_table_pername_cerebellum['pValFDR'] = multipletests(output_table_pername_cerebellum['pVal'], method='fdr_bh')[1]
-output_table_pername['pValMaskNormFDR'] = multipletests(output_table_pername['pValMaskNorm'], method='fdr_bh')[1]
+output_table_pername_cerebellum.loc[np.logical_not(np.isnan(output_table_pername_cerebellum['pVal'])), 'pValFDR'] = \
+    multipletests(output_table_pername_cerebellum.loc[np.logical_not(np.isnan(output_table_pername_cerebellum['pVal'])), 'pVal'], method='fdr_bh')[1]
+output_table_pername_cerebellum.loc[np.logical_not(np.isnan(output_table_pername_cerebellum['pValMaskNorm'])), 'pValMaskNormFDR'] = \
+    multipletests(output_table_pername_cerebellum.loc[np.logical_not(np.isnan(output_table_pername_cerebellum['pValMaskNorm'])), 'pValMaskNorm'], method='fdr_bh')[1]
 output_table_pername_cerebellum.to_csv(os.path.join(analysis_path, 'pername_cerebellum_volumes_human.csv'))
+
+output_table_pername_subcortical = output_table_pername[output_table_pername['atlas'] == 'subcortical']
+output_table_pername_subcortical.loc[np.logical_not(np.isnan(output_table_pername_subcortical['pVal'])), 'pValFDR'] = \
+    multipletests(output_table_pername_subcortical.loc[np.logical_not(np.isnan(output_table_pername_subcortical['pVal'])), 'pVal'], method='fdr_bh')[1]
+output_table_pername_subcortical.loc[np.logical_not(np.isnan(output_table_pername_subcortical['pValMaskNorm'])), 'pValMaskNormFDR'] = \
+    multipletests(output_table_pername_subcortical.loc[np.logical_not(np.isnan(output_table_pername_subcortical['pValMaskNorm'])), 'pValMaskNorm'], method='fdr_bh')[1]
+output_table_pername_subcortical.to_csv(os.path.join(analysis_path, 'pername_subcortical_volumes_human.csv'))
 
 
 
