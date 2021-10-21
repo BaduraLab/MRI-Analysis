@@ -1,0 +1,3 @@
+Data/*/*.nii* filter=lfs diff=lfs merge=lfs -text
+Data/Human/*.nii* filter=lfs diff=lfs merge=lfs -text
+Data/Mouse/*.nii* filter=lfs diff=lfs merge=lfs -text
