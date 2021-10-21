@@ -7,7 +7,6 @@
 tab
 TransformParameters.0.txt
 BackupScripts/
-Data/
 venv/
 _pycache_/
 __pycache__/
