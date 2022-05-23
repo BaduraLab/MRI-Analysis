@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+"""  Compute volumes of human subjects (adjusted with manual cerebellar and lobular annotations)
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 import os
 import numpy as np
 import nibabel as nib

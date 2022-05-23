@@ -1,3 +1,7 @@
+#!/usr/bin/python3
+"""  Use manually adjusted mouse lobular annotations to adjust cerebellar adjusted annotations using nearest neighbour interpolation
+"""
+
 import os
 import numpy as np
 import nibabel as nib

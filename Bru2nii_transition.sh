@@ -1,3 +1,5 @@
+# Script to reorient Bru2nii output
+
 raw_folder="/home/enzo/Desktop/Data/Mouse/Raw"
 
 custom_array=("${raw_folder}/KO_60_female.nii")

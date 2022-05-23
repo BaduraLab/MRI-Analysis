@@ -1,3 +1,14 @@
+#!/usr/bin/python3
+"""  Compute coordinates in native space from coordinates in reference space for human and mouse subjects
+
+Reference coordinates contain cerebellum and SN on different views.
+
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 # Get native coordinates of human and mouse patient and WT images
 import os
 import nibabel as nib

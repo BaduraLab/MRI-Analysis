@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+""" Linearly and non-linearly transform mouse subjects to reference space
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 import os
 import numpy as np
 import nibabel as nib

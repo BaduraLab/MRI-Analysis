@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+""" Use RATS generated mask to adjust annotation
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 # Mask synned annotation by multiplying annotation with mask
 # Note that areas in mask but not in synned annotation are not filled in
 

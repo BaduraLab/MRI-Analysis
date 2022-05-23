@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+"""  Script that defines helper functions
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 import numpy as np
 from scipy import spatial
 import numpy_indexed as npi

@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+"""  Convert folders of images to GIFs
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 from functions import imageFolder2gif
 import glob
 import os

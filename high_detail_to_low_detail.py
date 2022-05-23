@@ -1,4 +1,12 @@
 #!/usr/bin/python3
+"""  Use structure path to change volume integers to their parent volume integers
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
+#!/usr/bin/python3
 
 import os
 # import itk

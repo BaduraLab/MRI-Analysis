@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+"""  Use manually adjusted human lobular annotations to adjust cerebellar adjusted annotations using nearest neighbour interpolation
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 import os
 import numpy as np
 import nibabel as nib

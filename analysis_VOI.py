@@ -1,3 +1,14 @@
+#!/usr/bin/python3
+""" Compute center of masses for Volumes of Interest and try map volume integers onto a 1D MDS space
+
+For each mouse Volume Of Interest, compute the center of mass.
+Then use the distances between center of masses to map each volume on a 1D line with MultiDimensional Scaling (MDS).
+"""
+
+__author__ = "Enzo Nio"
+__version__ = "1.0.0"
+__maintainer__ = "Enzo Nio"
+
 import os
 import numpy as np
 import nibabel as nib
@@ -16,8 +27,6 @@ embedding = MDS(n_components=1, dissimilarity='precomputed')
 from pathlib import Path
 import numpy_indexed as npi
 
-
-
 # Define
 data_path = os.path.join('Data', 'Mouse', 'Processed_Old')
 reference_path = os.path.join('Data', 'Mouse', 'Reference')
@@ -27,7 +36,6 @@ reference_structure_path = os.path.join(reference_path, 'structure_graph_remappe
 analysis_table_path = os.path.join(analysis_path, 'all_volumes.csv')
 # VOIs = ['Lobule II', 'Lobules IV-V', 'Substantia nigra, compact part', 'Substantia nigra, reticular part']
 # VOIs = ['Substantia nigra, compact part', 'Substantia nigra, reticular part']
-
 
 # Load
 structure = pd.read_csv(reference_structure_path)
@@ -39,11 +47,7 @@ VOIs = np.unique(VOIs[np.logical_not(pd.isnull(VOIs))])
 
 
 
-
-
-
-
-# Go through mice and compute center of mass of VOIs
+## Go through mice and compute center of mass of VOIs
 mouse_path_list = [os.path.join(reference_path, 'annotation_50_reoriented.nii.gz')]
 structure_centers_table_list = list()
 for iMousePath, MousePath in enumerate(mouse_path_list):
@@ -108,14 +112,12 @@ for iMousePath, MousePath in enumerate(mouse_path_list):
                                           'CoM_right': CoM_right_arr,
                                           'CoM_left': CoM_left_arr})
     structure_centers_table_list.append(mouse_structure_table)
-
-
 structure_centers_table = pd.concat(structure_centers_table_list)
 structure_centers_table.to_csv(os.path.join(analysis_path, 'reference_CoM.csv'))
 
 
 
-# reference_CoM = pd.read_csv(os.path.join(analysis_path, 'reference_CoM.csv'))
+## map volume integers to 1D MDS
 reference_CoM = structure_centers_table
 reference_CoM_filt = reference_CoM[~(np.array([np.any(np.isnan(reference_CoM['CoM_right'][i])) for i in range(len(reference_CoM['CoM_right']))]) |
                                      np.array([np.any(np.isnan(reference_CoM['CoM_left'][i])) for i in range(len(reference_CoM['CoM_left']))]) )]
